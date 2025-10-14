@@ -33,7 +33,7 @@ This project serves as an educational tool to gain hands-on experience in integr
     ```
 2.  **Download the Language Model:**
     - Obtain the `Phi-3-mini-4k-instruct-q4.gguf` model. You can find quantized models on platforms like Hugging Face.
-    - Place the downloaded model file inside the `llms/` directory in the project root.
+    - Place the downloaded model file inside the `llms/` directory in the project root and rename it to llm.gguf.
 
 3.  **Run the project:**
     - Open the Godot Engine editor.
