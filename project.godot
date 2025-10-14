@@ -11,9 +11,17 @@ config_version=5
 [application]
 
 config/name="SpacePoker"
-run/main_scene="uid://bgjflm8vorp40"
+run/main_scene="res://scenes/SpikeTest.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+LLMClient="*res://scripts/LLMClient.gd"
+
+[enabled_addons]
+
+enabled=PackedStringArray("godot_llm")
 
 [rendering]
 
