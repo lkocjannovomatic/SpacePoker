@@ -1,3 +1,3 @@
-- Godot Engine
-- Godot LLM addon
-- local Phi-3-mini LLM.
+- Godot Engine - https://github.com/godotengine/godot
+- Godot LLM addon - https://github.com/Adriankhl/godot-llm
+- local Phi-3-mini LLM - https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf
