@@ -1,0 +1,3 @@
+- Godot Engine
+- Godot LLM addon
+- local Phi-3-mini LLM.
