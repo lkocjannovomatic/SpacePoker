@@ -54,8 +54,8 @@ func generate_npc(slot_index: int, empty_slot_template: Dictionary):
 	# Define JSON schema for structured NPC output
 	var json_schema = _get_npc_json_schema()
 	
-	# Send to LLM with JSON schema
-	var success = LLMClient.send_prompt(prompt, json_schema)
+	# Send to LLM with JSON schema, using NPC_GENERATION model (Phi-3)
+	var success = LLMClient.send_prompt(prompt, json_schema, LLMClient.ModelConfig.NPC_GENERATION)
 	
 	if not success:
 		_on_generation_failed("Failed to initiate NPC generation")
