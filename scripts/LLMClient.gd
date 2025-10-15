@@ -17,8 +17,8 @@ func _ready():
 func _initialize_llm():
 	"""Initialize the GDLlama node with appropriate settings."""
 	# Check if the LLM model file exists
-	if not FileAccess.file_exists("res://llms/llm.gguf"):
-		var error_msg = "LLM model file not found at res://llms/llm.gguf. Please ensure the model is properly installed."
+	if not FileAccess.file_exists("res://llms/TinyLlama-1.1B-32k-Instruct-Q4_K_M.gguf"):
+		var error_msg = "LLM model file not found at res://llms/TinyLlama-1.1B-32k-Instruct-Q4_K_M.gguf. Please ensure the model is properly installed."
 		print("LLMClient Error: ", error_msg)
 		error_occurred.emit(error_msg)
 		return
@@ -32,12 +32,16 @@ func _initialize_llm():
 		return
 	
 	# Configure the LLM with settings appropriate for chat/personality generation
-	gdllama.model_path = "res://llms/llm.gguf"
-	gdllama.context_size = 2048
+	# Model: TinyLlama-1.1B-32k-Instruct-Q4_K_M (668 MB)
+	# Source: https://huggingface.co/tensorblock/TinyLlama-1.1B-32k-Instruct-GGUF
+	# Quantization: Q4_K_M - medium, balanced quality (recommended)
+	# Architecture: LLaMA, 1.1B parameters
+	# Max context window: 32768 tokens (32k)
+	gdllama.model_path = "res://llms/TinyLlama-1.1B-32k-Instruct-Q4_K_M.gguf"
+	gdllama.context_size = 2048  # Using 2048 out of 32768 max for performance
 	gdllama.n_predict = 150  # Reasonable length for chat responses
-	gdllama.temperature = 0.7  # Balanced creativity
-	gdllama.top_p = 0.9
-	#gdllama.n_thread = 4  # Adjust based on system capabilities
+	gdllama.temperature = 0.7  # Balanced creativity (0.0-1.0, higher = more creative)
+	gdllama.top_p = 0.9  # Nucleus sampling (0.0-1.0, controls diversity)
 	
 	# Connect signals for async handling
 	gdllama.generate_text_finished.connect(_on_text_generated)
