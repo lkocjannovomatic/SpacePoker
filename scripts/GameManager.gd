@@ -11,6 +11,7 @@ signal npc_data_changed
 # Constants
 const MAX_NPC_SLOTS = 8
 const SAVE_DIR = "saves/"
+const PROMPTS_DIR = "prompts/"
 const STARTING_CREDITS = 1000
 const SMALL_BLIND = 10
 const BIG_BLIND = 20
@@ -24,6 +25,10 @@ var player_stats: Dictionary = {
 	"total_wins": 0,
 	"total_losses": 0
 }
+
+# NPC generation state
+var _is_generating: bool = false
+var _temp_npc_data: Dictionary = {}  # Temporary storage during generation
 
 func _ready():
 	print("GameManager: Initializing...")
@@ -124,13 +129,30 @@ func save_player_stats():
 	_save_json_file(stats_path, player_stats)
 
 func _save_json_file(file_path: String, data: Variant):
-	"""Save data to a JSON file."""
+	"""Save data to a JSON file with consistent field ordering."""
 	var file = FileAccess.open(file_path, FileAccess.WRITE)
 	if file == null:
 		print("GameManager Error: Could not open file for writing: ", file_path)
 		return
 	
-	var json_string = JSON.stringify(data, "\t")
+	var json_string = ""
+	
+	# For NPC data, manually construct JSON with proper field order
+	if data is Dictionary and data.has("name"):
+		json_string = "{\n"
+		json_string += '\t"name": ' + JSON.stringify(data.get("name", "")) + ",\n"
+		json_string += '\t"backstory": ' + JSON.stringify(data.get("backstory", "")) + ",\n"
+		json_string += '\t"aggression": ' + str(data.get("aggression", 0.5)) + ",\n"
+		json_string += '\t"bluffing": ' + str(data.get("bluffing", 0.5)) + ",\n"
+		json_string += '\t"risk_aversion": ' + str(data.get("risk_aversion", 0.5)) + ",\n"
+		json_string += '\t"wins_against": ' + str(data.get("wins_against", 0)) + ",\n"
+		json_string += '\t"losses_against": ' + str(data.get("losses_against", 0)) + ",\n"
+		json_string += '\t"conversation_history": ' + JSON.stringify(data.get("conversation_history", "")) + "\n"
+		json_string += "}"
+	else:
+		# For other data (like player stats), use standard JSON
+		json_string = JSON.stringify(data, "\t")
+	
 	file.store_string(json_string)
 	file.close()
 	print("GameManager: Saved data to ", file_path)
@@ -152,7 +174,7 @@ func get_npc_data(slot_index: int) -> Dictionary:
 func generate_npc(slot_index: int):
 	"""
 	Initiate NPC generation for a specific slot.
-	This function triggers the LLM to generate a backstory and personality.
+	Uses a single-phase approach: generates name, backstory, and personality traits in one LLM call.
 	"""
 	# Defensive check: prevent generation on occupied slot
 	if not is_slot_empty(slot_index):
@@ -162,130 +184,332 @@ func generate_npc(slot_index: int):
 	print("GameManager: Starting NPC generation for slot ", slot_index)
 	processing_started.emit()
 	
-	# Connect to LLM signals
-	if not LLMClient.response_received.is_connected(_on_npc_generation_complete):
-		LLMClient.response_received.connect(_on_npc_generation_complete)
-	
-	if not LLMClient.error_occurred.is_connected(_on_npc_generation_error):
-		LLMClient.error_occurred.connect(_on_npc_generation_error)
-	
 	# Store the slot index for the callback
 	current_npc_index = slot_index
+	_is_generating = true
+	_temp_npc_data = _create_empty_slot()
+	
+	# Connect to LLM signals
+	if not LLMClient.response_received.is_connected(_on_llm_response):
+		LLMClient.response_received.connect(_on_llm_response)
+	
+	if not LLMClient.error_occurred.is_connected(_on_llm_error):
+		LLMClient.error_occurred.connect(_on_llm_error)
 	
 	# Create prompt for NPC generation
-	var prompt = _create_npc_generation_prompt()
+	var prompt = _load_prompt_file("npc_generation.txt")
 	
 	# Send to LLM
 	var success = LLMClient.send_prompt(prompt)
 	
 	if not success:
-		_on_npc_generation_error("Failed to initiate LLM request")
+		_on_generation_failed("Failed to initiate NPC generation")
 
-func _create_npc_generation_prompt() -> String:
-	"""Create a structured prompt for generating an NPC character."""
-	return """Generate a unique poker player character with a brief backstory (2-3 sentences).
-After the backstory, provide personality ratings on a scale of 0.0 to 1.0 for these traits:
-- Aggression: How often they bet/raise vs. check/call
-- Bluffing: How likely they are to bluff
-- Risk Aversion: How conservative they are with their chips
-
-Format your response exactly like this:
-NAME: [Character name]
-BACKSTORY: [2-3 sentence backstory]
-AGGRESSION: [0.0-1.0]
-BLUFFING: [0.0-1.0]
-RISK_AVERSION: [0.0-1.0]
-
-Example:
-NAME: Captain Sarah Chen
-BACKSTORY: A former space freighter pilot who learned poker during long hauls between star systems. She's seen fortunes won and lost at trading posts across the galaxy. Now retired, she plays for the thrill of reading people.
-AGGRESSION: 0.7
-BLUFFING: 0.6
-RISK_AVERSION: 0.4"""
-
-func _on_npc_generation_complete(response_text: String):
-	"""Handle successful NPC generation from LLM."""
-	print("GameManager: NPC generation complete. Parsing response...")
+func _load_prompt_file(filename: String) -> String:
+	"""Load a prompt file from the prompts directory."""
+	var prompt_path = "res://" + PROMPTS_DIR + filename
 	
-	# Disconnect signals
-	if LLMClient.response_received.is_connected(_on_npc_generation_complete):
-		LLMClient.response_received.disconnect(_on_npc_generation_complete)
-	if LLMClient.error_occurred.is_connected(_on_npc_generation_error):
-		LLMClient.error_occurred.disconnect(_on_npc_generation_error)
+	if not FileAccess.file_exists(prompt_path):
+		print("GameManager Error: Prompt file not found at ", prompt_path)
+		return ""
 	
-	# Parse the LLM response
-	var npc_data = _parse_npc_response(response_text)
+	var file = FileAccess.open(prompt_path, FileAccess.READ)
+	if file == null:
+		print("GameManager Error: Could not open prompt file: ", prompt_path)
+		return ""
 	
-	if npc_data.is_empty():
-		_on_npc_generation_error("Failed to parse NPC data from LLM response")
+	var prompt = file.get_as_text()
+	file.close()
+	
+	return prompt
+
+func _on_llm_response(response_text: String):
+	"""Handle LLM response for NPC generation."""
+	print("GameManager: LLM response received, parsing...")
+	
+	var parsed_data = _parse_npc_response(response_text)
+	
+	if parsed_data.is_empty():
+		_on_generation_failed("Failed to parse NPC data from LLM response")
 		return
 	
-	# Store the generated NPC
-	npc_slots[current_npc_index] = npc_data
+	# Store all parsed data
+	_temp_npc_data["name"] = parsed_data["name"]
+	_temp_npc_data["backstory"] = parsed_data["backstory"]
+	_temp_npc_data["aggression"] = parsed_data["aggression"]
+	_temp_npc_data["bluffing"] = parsed_data["bluffing"]
+	_temp_npc_data["risk_aversion"] = parsed_data["risk_aversion"]
+	
+	# Save the completed NPC
+	npc_slots[current_npc_index] = _temp_npc_data
 	save_npc_slot(current_npc_index)
 	
-	current_npc_index = -1
+	print("GameManager: NPC generation complete!")
+	print("  Name: ", _temp_npc_data["name"])
+	print("  Backstory: ", _temp_npc_data["backstory"].substr(0, 100), "...")
+	print("  Aggression: ", _temp_npc_data["aggression"])
+	print("  Bluffing: ", _temp_npc_data["bluffing"])
+	print("  Risk Aversion: ", _temp_npc_data["risk_aversion"])
+	
+	# Cleanup
+	_cleanup_generation()
+	
+	# Notify UI
 	processing_finished.emit()
 	npc_data_changed.emit()
+
+func _on_llm_error(error_message: String):
+	"""Handle LLM errors during generation."""
+	print("GameManager Error: LLM error - ", error_message)
+	_on_generation_failed(error_message)
+
+func _on_generation_failed(error_message: String):
+	"""Handle generation failure and cleanup."""
+	print("GameManager Error: NPC generation failed - ", error_message)
+	_cleanup_generation()
+	processing_finished.emit()
+	# TODO: Show error dialog to user
+
+func _cleanup_generation():
+	"""Clean up generation state and disconnect signals."""
+	_is_generating = false
+	_temp_npc_data = {}
+	current_npc_index = -1
 	
-	print("GameManager: NPC successfully generated and saved")
+	# Disconnect signals
+	if LLMClient.response_received.is_connected(_on_llm_response):
+		LLMClient.response_received.disconnect(_on_llm_response)
+	if LLMClient.error_occurred.is_connected(_on_llm_error):
+		LLMClient.error_occurred.disconnect(_on_llm_error)
 
 func _parse_npc_response(response: String) -> Dictionary:
-	"""Parse the LLM response to extract NPC data."""
-	var data = _create_empty_slot()
+	"""Parse NPC generation response: name, backstory, and all personality traits."""
+	var data = {}
 	
-	# Simple regex-based parsing
-	var name_regex = RegEx.new()
-	name_regex.compile("NAME:\\s*(.+)")
-	var name_match = name_regex.search(response)
-	if name_match:
-		data["name"] = name_match.get_string(1).strip_edges()
+	# Clean response and handle Phi-3 prompt echo (ends at <|assistant|>)
+	var cleaned = _extract_response_content(response)
+	var lines = cleaned.split("\n")
 	
-	var backstory_regex = RegEx.new()
-	backstory_regex.compile("BACKSTORY:\\s*(.+?)(?=AGGRESSION:|$)")
-	var backstory_match = backstory_regex.search(response)
-	if backstory_match:
-		data["backstory"] = backstory_match.get_string(1).strip_edges()
+	# Parse all fields
+	for line in lines:
+		line = line.strip_edges()
+		if line == "":
+			continue
+		
+		var upper_line = line.to_upper()
+		
+		if upper_line.begins_with("NAME:"):
+			var name_value = line.substr(5).strip_edges()
+			name_value = name_value.replace("\"", "").replace("'", "")
+			if name_value != "" and not name_value.contains("["):
+				data["name"] = name_value
+		
+		elif upper_line.begins_with("BACKSTORY:"):
+			var backstory_value = line.substr(10).strip_edges()
+			if not backstory_value.contains("["):
+				data["backstory"] = backstory_value
+		
+		elif upper_line.begins_with("AGGRESSION:"):
+			data["aggression"] = _extract_trait_value_from_line(line, "AGGRESSION:")
+		
+		elif upper_line.begins_with("BLUFFING:"):
+			data["bluffing"] = _extract_trait_value_from_line(line, "BLUFFING:")
+		
+		elif upper_line.begins_with("RISK_AVERSION:") or upper_line.begins_with("RISK AVERSION:"):
+			data["risk_aversion"] = _extract_trait_value_from_line(line, "RISK")
+		
+		# Continue backstory if it's a continuation line (not a field marker)
+		elif data.has("backstory") and not data.has("aggression") and not upper_line.contains(":"):
+			if line.length() > 10 and not line.contains("["):
+				data["backstory"] += " " + line
 	
-	var aggression_regex = RegEx.new()
-	aggression_regex.compile("AGGRESSION:\\s*([0-9.]+)")
-	var aggression_match = aggression_regex.search(response)
-	if aggression_match:
-		data["aggression"] = float(aggression_match.get_string(1))
-	
-	var bluffing_regex = RegEx.new()
-	bluffing_regex.compile("BLUFFING:\\s*([0-9.]+)")
-	var bluffing_match = bluffing_regex.search(response)
-	if bluffing_match:
-		data["bluffing"] = float(bluffing_match.get_string(1))
-	
-	var risk_regex = RegEx.new()
-	risk_regex.compile("RISK_AVERSION:\\s*([0-9.]+)")
-	var risk_match = risk_regex.search(response)
-	if risk_match:
-		data["risk_aversion"] = float(risk_match.get_string(1))
-	
-	# Validate that we at least got a name
-	if data["name"] == "":
-		print("GameManager Error: Could not parse name from LLM response")
+	# Validate all required fields
+	if not data.has("name") or data["name"] == "":
+		print("GameManager Error: Could not parse name from response")
+		print("Raw response (first 300 chars): ", response.substr(0, 300))
 		return {}
+	
+	if not data.has("backstory") or data["backstory"] == "":
+		print("GameManager Error: Could not parse backstory from response")
+		return {}
+	
+	if not data.has("aggression") or data["aggression"] < 0.0:
+		print("GameManager Error: Could not parse aggression trait")
+		return {}
+	
+	if not data.has("bluffing") or data["bluffing"] < 0.0:
+		print("GameManager Error: Could not parse bluffing trait")
+		return {}
+	
+	if not data.has("risk_aversion") or data["risk_aversion"] < 0.0:
+		print("GameManager Error: Could not parse risk_aversion trait")
+		return {}
+	
+	# Trim backstory to reasonable length
+	if data["backstory"].length() > 1000:
+		data["backstory"] = data["backstory"].substr(0, 997) + "..."
+	
+	# Clamp trait values to valid range
+	data["aggression"] = clamp(data["aggression"], 0.0, 1.0)
+	data["bluffing"] = clamp(data["bluffing"], 0.0, 1.0)
+	data["risk_aversion"] = clamp(data["risk_aversion"], 0.0, 1.0)
 	
 	return data
 
-func _on_npc_generation_error(error_message: String):
-	"""Handle NPC generation errors."""
-	print("GameManager Error: NPC generation failed - ", error_message)
+func _extract_trait_value_from_line(line: String, _keyword: String) -> float:
+	"""Extract a single trait value from a line containing 'KEYWORD: value'."""
+	var colon_pos = line.find(":")
+	if colon_pos == -1:
+		return -1.0
 	
-	# Disconnect signals
-	if LLMClient.response_received.is_connected(_on_npc_generation_complete):
-		LLMClient.response_received.disconnect(_on_npc_generation_complete)
-	if LLMClient.error_occurred.is_connected(_on_npc_generation_error):
-		LLMClient.error_occurred.disconnect(_on_npc_generation_error)
+	var value_str = line.substr(colon_pos + 1).strip_edges()
+	return _extract_first_float(value_str)
+
+func _extract_trait_value(text: String, keywords: Array) -> float:
+	"""
+	Extract a trait value using multiple strategies.
+	Returns -1.0 if no valid value found.
+	"""
+	var upper_text = text.to_upper()
 	
-	current_npc_index = -1
-	processing_finished.emit()
+	# Try each keyword variant
+	for keyword in keywords:
+		var keyword_upper = keyword.to_upper()
+		var pos = upper_text.find(keyword_upper)
+		
+		if pos == -1:
+			continue
+		
+		# Get the rest of the line after the keyword
+		var line_start = pos
+		var line_end = upper_text.find("\n", pos)
+		if line_end == -1:
+			line_end = upper_text.length()
+		
+		var line = text.substr(line_start, line_end - line_start)
+		
+		# Strategy 1: Look for number after colon
+		var colon_pos = line.find(":")
+		if colon_pos != -1:
+			var after_colon = line.substr(colon_pos + 1).strip_edges()
+			var colon_value = _extract_first_float(after_colon)
+			if colon_value >= 0.0:
+				return colon_value
+		
+		# Strategy 2: Look for any number in the line
+		var line_value = _extract_first_float(line)
+		if line_value >= 0.0:
+			return line_value
 	
-	# TODO: Show error dialog to user
+	return -1.0
+
+func _extract_first_float(text: String) -> float:
+	"""
+	Extract the first valid float from a string.
+	More aggressive than _extract_float - finds ANY valid number.
+	Returns -1.0 if no valid number found.
+	"""
+	var cleaned = ""
+	var found_digit = false
+	var has_dot = false
+	
+	for i in range(text.length()):
+		var c = text[i]
+		
+		# Start collecting when we find a digit or minus
+		if c.is_valid_int():
+			cleaned += c
+			found_digit = true
+		elif c == "." and found_digit and not has_dot:
+			cleaned += c
+			has_dot = true
+		elif c == "-" and not found_digit:
+			cleaned += c
+		elif found_digit:
+			# We've found a number and hit a non-numeric character - stop
+			break
+	
+	if not found_digit or cleaned == "" or cleaned == "." or cleaned == "-":
+		return -1.0
+	
+	return float(cleaned)
+
+func _extract_response_content(response: String) -> String:
+	"""Extract actual response content, removing Phi-3 prompt echoes."""
+	var cleaned = response.strip_edges()
+	cleaned = cleaned.replace("\r\n", "\n")
+	cleaned = cleaned.replace("\r", "\n")
+	
+	# Phi-3 format: Response comes after <|assistant|> tag
+	var assistant_marker = "<|assistant|>"
+	var assistant_pos = cleaned.find(assistant_marker)
+	if assistant_pos != -1:
+		# Extract everything after <|assistant|>
+		cleaned = cleaned.substr(assistant_pos + assistant_marker.length()).strip_edges()
+	
+	# Remove any trailing <|end|> or <|user|> tags if present
+	var end_marker = "<|end|>"
+	var end_pos = cleaned.find(end_marker)
+	if end_pos != -1:
+		cleaned = cleaned.substr(0, end_pos).strip_edges()
+	
+	var user_marker = "<|user|>"
+	var user_pos = cleaned.find(user_marker)
+	if user_pos != -1:
+		cleaned = cleaned.substr(0, user_pos).strip_edges()
+	
+	# Fallback: Look for "### Response:" marker (old format)
+	var response_marker = "### Response:"
+	var response_start = cleaned.find(response_marker)
+	if response_start != -1:
+		cleaned = cleaned.substr(response_start + response_marker.length()).strip_edges()
+	
+	# Additional fallback: If we still see instruction markers, find first field marker
+	if cleaned.find("### Instruction:") != -1 or cleaned.find("### Input:") != -1 or cleaned.find("<|user|>") != -1:
+		var temp_lines = cleaned.split("\n")
+		var collecting = false
+		var response_lines = []
+		
+		for temp_line in temp_lines:
+			var upper_line = temp_line.strip_edges().to_upper()
+			# Start collecting when we find the first field
+			if upper_line.begins_with("NAME:") or upper_line.begins_with("AGGRESSION:"):
+				collecting = true
+			# Stop collecting if we hit another special marker
+			if upper_line.begins_with("<|") or upper_line.begins_with("###"):
+				if collecting:
+					break
+			if collecting:
+				response_lines.append(temp_line)
+		
+		if response_lines.size() > 0:
+			cleaned = "\n".join(response_lines)
+	
+	return cleaned
+
+func _extract_float(value_str: String) -> float:
+	"""Extract a float value from a string, handling common formatting issues."""
+	# Remove any non-numeric characters except dot and minus
+	var cleaned = ""
+	var has_dot = false
+	
+	for i in range(value_str.length()):
+		var c = value_str[i]
+		if c.is_valid_int() or (c == "-" and i == 0):
+			cleaned += c
+		elif c == "." and not has_dot:
+			cleaned += c
+			has_dot = true
+		elif c == " " or c == "\t":
+			continue
+		else:
+			# Stop at first non-numeric character
+			break
+	
+	if cleaned == "" or cleaned == "." or cleaned == "-":
+		return -1.0
+	
+	return float(cleaned)
 
 func delete_npc(slot_index: int):
 	"""Delete an NPC by resetting their slot to empty state."""

@@ -8,7 +8,7 @@ SpacePoker is a single-player desktop poker game (No-Limit Texas Hold'em) built 
 ### Technology Stack
 - **Godot Engine** (GDScript) - Game engine and UI
 - **Godot LLM addon** - Local LLM integration 
-- **Local Phi-3-mini LLM** - NPC personality generation and chat responses
+- **Local LLM** - NPC personality generation and chat responses
 - **JSON files** - Unencrypted local persistence in `saves/` folder
 
 ### Core Systems Architecture
@@ -91,11 +91,22 @@ var risk_aversion: float # 0.0-1.0, affects fold thresholds
 - Fallback responses for LLM failures
 - JSON save corruption handling
 
-## Files to Reference
-- `docs/prd.md` - Complete functional requirements and user stories
-- `docs/tech-stack.md` - Technology decisions
-- `docs/project_analysis.md` - Risk assessment and timeline
-- `docs/prd_summary.md` - Key design decisions and architectural choices
+## Documentation Policy
+
+### Agent Mode Restrictions
+- **DO NOT create new documentation files** - All required documentation already exists in `docs/`
+- **Updates allowed** - You may modify existing documentation files when:
+  - Correcting errors or outdated information
+  - Adding clarifications to existing sections
+  - Updating implementation details that have changed
+- **If new documentation seems needed** - Ask the user first before creating any new `.md` files
+
+### Existing Documentation Structure (DO NOT EXPAND)
+- `docs/prd.md` - Product requirements
+- `docs/tech-stack.md` - Technology decisions  
+- `docs/project_analysis.md` - Risk assessment
+- `docs/prd_summary.md` - Design decisions
+- `.github/copilot-instructions.md` - This file
 
 ## Development Priority
 1. **Technical spike** - Validate Godot + local LLM communication

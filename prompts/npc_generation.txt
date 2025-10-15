@@ -1,0 +1,40 @@
+<|user|>
+You are creating a unique character for a space-themed poker game. Generate both their backstory and personality traits.
+
+**PART 1: Create the Character**
+
+Requirements:
+1. A creative name (examples: military ranks like "Commander" or "Captain", occupation titles like "Salvager" or "Broker", planet origins like "Kepler" or "Zenith")
+
+2. A detailed backstory (3-4 sentences) that includes:
+   - Their profession or background (examples: asteroid miner, cargo smuggler, xenobiologist, corporate spy, naval officer, deep-space trader, bounty hunter, station engineer, diplomatic courier, salvage operator, AI researcher, colony administrator)
+   - How they learned or why they play poker
+   - A defining characteristic, motivation, or past event that shaped them
+   - Their current situation or what brought them to this poker game
+
+**PART 2: Analyze Their Poker Style**
+
+Based on the backstory you created, rate these three personality traits that affect their poker behavior (0.0 to 1.0):
+
+**AGGRESSION** (how often they bet/raise aggressively)
+- Low (0.0-0.3): Passive, checks and calls often
+- Medium (0.4-0.6): Balanced, selective aggression
+- High (0.7-1.0): Very aggressive, frequently raises
+
+**BLUFFING** (how likely they are to bluff)
+- Low (0.0-0.3): Honest, straightforward player
+- Medium (0.4-0.6): Bluffs occasionally in good spots
+- High (0.7-1.0): Frequent bluffer, deceptive
+
+**RISK_AVERSION** (how cautious they are with chips)
+- Low (0.0-0.3): Reckless, gambles freely
+- Medium (0.4-0.6): Calculated risk-taker
+- High (0.7-1.0): Very cautious, protective of chips
+
+**Format your response exactly as:**
+NAME: [character name]
+BACKSTORY: [3-4 sentence backstory]
+AGGRESSION: [number 0.0-1.0]
+BLUFFING: [number 0.0-1.0]
+RISK_AVERSION: [number 0.0-1.0]<|end|>
+<|assistant|>
