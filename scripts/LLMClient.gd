@@ -49,9 +49,10 @@ func _initialize_llm():
 	
 	print("LLMClient: GDLlama initialized successfully")
 
-func send_prompt(prompt: String) -> bool:
+func send_prompt(prompt: String, json_schema: String = "") -> bool:
 	"""
 	Send a prompt to the LLM asynchronously.
+	If json_schema is provided, uses generate_text_json for structured output.
 	Returns true if the request was initiated successfully, false otherwise.
 	"""
 	if is_llm_processing:
@@ -67,11 +68,14 @@ func send_prompt(prompt: String) -> bool:
 		return false
 	
 	print("LLMClient: Sending prompt: ", prompt.substr(0, 50), "...")
+	if json_schema != "":
+		print("LLMClient: Using JSON schema for structured output")
 	
 	is_llm_processing = true
 	
 	# Use run_generate_text for async processing
-	var result = gdllama.run_generate_text(prompt, "", "")
+	# If json_schema is provided, it will be used for structured output
+	var result = gdllama.run_generate_text(prompt, "", json_schema)
 	
 	if result != OK:
 		is_llm_processing = false

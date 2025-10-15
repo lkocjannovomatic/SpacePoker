@@ -174,7 +174,7 @@ func get_npc_data(slot_index: int) -> Dictionary:
 func generate_npc(slot_index: int):
 	"""
 	Initiate NPC generation for a specific slot.
-	Uses a single-phase approach: generates name, backstory, and personality traits in one LLM call.
+	Uses JSON schema for structured output from LLM.
 	"""
 	# Defensive check: prevent generation on occupied slot
 	if not is_slot_empty(slot_index):
@@ -199,11 +199,54 @@ func generate_npc(slot_index: int):
 	# Create prompt for NPC generation
 	var prompt = _load_prompt_file("npc_generation.txt")
 	
-	# Send to LLM
-	var success = LLMClient.send_prompt(prompt)
+	# Define JSON schema for structured NPC output
+	var json_schema = _get_npc_json_schema()
+	
+	# Send to LLM with JSON schema
+	var success = LLMClient.send_prompt(prompt, json_schema)
 	
 	if not success:
 		_on_generation_failed("Failed to initiate NPC generation")
+
+func _get_npc_json_schema() -> String:
+	"""
+	Returns the JSON schema for NPC generation.
+	This ensures the LLM outputs valid JSON matching our NPC data structure.
+	"""
+	var schema = {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"description": "Character name (e.g., Commander, Captain, Salvager, etc.)"
+			},
+			"backstory": {
+				"type": "string",
+				"description": "3-4 sentence backstory including profession, how they learned poker, defining characteristic, and current situation"
+			},
+			"aggression": {
+				"type": "number",
+				"minimum": 0.0,
+				"maximum": 1.0,
+				"description": "How often they bet/raise aggressively (0.0-1.0)"
+			},
+			"bluffing": {
+				"type": "number",
+				"minimum": 0.0,
+				"maximum": 1.0,
+				"description": "How likely they are to bluff (0.0-1.0)"
+			},
+			"risk_aversion": {
+				"type": "number",
+				"minimum": 0.0,
+				"maximum": 1.0,
+				"description": "How cautious they are with chips (0.0-1.0)"
+			}
+		},
+		"required": ["name", "backstory", "aggression", "bluffing", "risk_aversion"]
+	}
+	
+	return JSON.stringify(schema)
 
 func _load_prompt_file(filename: String) -> String:
 	"""Load a prompt file from the prompts directory."""
@@ -224,13 +267,13 @@ func _load_prompt_file(filename: String) -> String:
 	return prompt
 
 func _on_llm_response(response_text: String):
-	"""Handle LLM response for NPC generation."""
-	print("GameManager: LLM response received, parsing...")
+	"""Handle LLM response for NPC generation (JSON format)."""
+	print("GameManager: LLM response received, parsing JSON...")
 	
-	var parsed_data = _parse_npc_response(response_text)
+	var parsed_data = _parse_npc_json_response(response_text)
 	
 	if parsed_data.is_empty():
-		_on_generation_failed("Failed to parse NPC data from LLM response")
+		_on_generation_failed("Failed to parse NPC data from LLM JSON response")
 		return
 	
 	# Store all parsed data
@@ -258,6 +301,101 @@ func _on_llm_response(response_text: String):
 	processing_finished.emit()
 	npc_data_changed.emit()
 
+func _parse_npc_json_response(response: String) -> Dictionary:
+	"""Parse JSON response from LLM into NPC data structure."""
+	# Clean the response by extracting JSON between Phi-3 special tokens
+	var cleaned_response = _extract_json_from_response(response)
+	
+	var json = JSON.new()
+	var parse_result = json.parse(cleaned_response)
+	
+	if parse_result != OK:
+		print("GameManager Error: JSON parse error at line ", json.get_error_line(), ": ", json.get_error_message())
+		print("Raw response: ", response)
+		print("Cleaned response: ", cleaned_response)
+		return {}
+	
+	var data = json.data
+	
+	# Validate all required fields are present
+	if not data is Dictionary:
+		print("GameManager Error: LLM response is not a JSON object")
+		return {}
+	
+	if not data.has("name") or data["name"] == "":
+		print("GameManager Error: Missing or empty 'name' field")
+		return {}
+	
+	if not data.has("backstory") or data["backstory"] == "":
+		print("GameManager Error: Missing or empty 'backstory' field")
+		return {}
+	
+	if not data.has("aggression"):
+		print("GameManager Error: Missing 'aggression' field")
+		return {}
+	
+	if not data.has("bluffing"):
+		print("GameManager Error: Missing 'bluffing' field")
+		return {}
+	
+	if not data.has("risk_aversion"):
+		print("GameManager Error: Missing 'risk_aversion' field")
+		return {}
+	
+	# Validate and clamp trait values
+	var result = {}
+	result["name"] = str(data["name"])
+	result["backstory"] = str(data["backstory"])
+	
+	# Ensure numeric values and clamp to valid range
+	result["aggression"] = clamp(float(data["aggression"]), 0.0, 1.0)
+	result["bluffing"] = clamp(float(data["bluffing"]), 0.0, 1.0)
+	result["risk_aversion"] = clamp(float(data["risk_aversion"]), 0.0, 1.0)
+	
+	# Trim backstory to reasonable length
+	if result["backstory"].length() > 1000:
+		result["backstory"] = result["backstory"].substr(0, 997) + "..."
+	
+	return result
+
+func _extract_json_from_response(response: String) -> String:
+	"""
+	Extract JSON content from LLM response by removing Phi-3 prompt echoes.
+	JSON result is between the last <|assistant|> and last <|end|> tags.
+	"""
+	var cleaned = response.strip_edges()
+	
+	# Normalize line endings
+	cleaned = cleaned.replace("\r\n", "\n")
+	cleaned = cleaned.replace("\r", "\n")
+	
+	# Find the last occurrence of <|assistant|> marker
+	var assistant_marker = "<|assistant|>"
+	var last_assistant_pos = cleaned.rfind(assistant_marker)
+	
+	if last_assistant_pos != -1:
+		# Extract everything after the last <|assistant|>
+		cleaned = cleaned.substr(last_assistant_pos + assistant_marker.length())
+	
+	# Find the last occurrence of <|end|> marker
+	var end_marker = "<|end|>"
+	var last_end_pos = cleaned.rfind(end_marker)
+	
+	if last_end_pos != -1:
+		# Extract everything before the last <|end|>
+		cleaned = cleaned.substr(0, last_end_pos)
+	
+	# Strip any remaining whitespace
+	cleaned = cleaned.strip_edges()
+	
+	# Log for debugging
+	if last_assistant_pos != -1 or last_end_pos != -1:
+		print("GameManager: Cleaned LLM response (removed prompt echo)")
+		print("  Original length: ", response.length(), " chars")
+		print("  Cleaned length: ", cleaned.length(), " chars")
+	
+	return cleaned
+
 func _on_llm_error(error_message: String):
 	"""Handle LLM errors during generation."""
 	print("GameManager Error: LLM error - ", error_message)
@@ -281,235 +419,6 @@ func _cleanup_generation():
 		LLMClient.response_received.disconnect(_on_llm_response)
 	if LLMClient.error_occurred.is_connected(_on_llm_error):
 		LLMClient.error_occurred.disconnect(_on_llm_error)
-
-func _parse_npc_response(response: String) -> Dictionary:
-	"""Parse NPC generation response: name, backstory, and all personality traits."""
-	var data = {}
-	
-	# Clean response and handle Phi-3 prompt echo (ends at <|assistant|>)
-	var cleaned = _extract_response_content(response)
-	var lines = cleaned.split("\n")
-	
-	# Parse all fields
-	for line in lines:
-		line = line.strip_edges()
-		if line == "":
-			continue
-		
-		var upper_line = line.to_upper()
-		
-		if upper_line.begins_with("NAME:"):
-			var name_value = line.substr(5).strip_edges()
-			name_value = name_value.replace("\"", "").replace("'", "")
-			if name_value != "" and not name_value.contains("["):
-				data["name"] = name_value
-		
-		elif upper_line.begins_with("BACKSTORY:"):
-			var backstory_value = line.substr(10).strip_edges()
-			if not backstory_value.contains("["):
-				data["backstory"] = backstory_value
-		
-		elif upper_line.begins_with("AGGRESSION:"):
-			data["aggression"] = _extract_trait_value_from_line(line, "AGGRESSION:")
-		
-		elif upper_line.begins_with("BLUFFING:"):
-			data["bluffing"] = _extract_trait_value_from_line(line, "BLUFFING:")
-		
-		elif upper_line.begins_with("RISK_AVERSION:") or upper_line.begins_with("RISK AVERSION:"):
-			data["risk_aversion"] = _extract_trait_value_from_line(line, "RISK")
-		
-		# Continue backstory if it's a continuation line (not a field marker)
-		elif data.has("backstory") and not data.has("aggression") and not upper_line.contains(":"):
-			if line.length() > 10 and not line.contains("["):
-				data["backstory"] += " " + line
-	
-	# Validate all required fields
-	if not data.has("name") or data["name"] == "":
-		print("GameManager Error: Could not parse name from response")
-		print("Raw response (first 300 chars): ", response.substr(0, 300))
-		return {}
-	
-	if not data.has("backstory") or data["backstory"] == "":
-		print("GameManager Error: Could not parse backstory from response")
-		return {}
-	
-	if not data.has("aggression") or data["aggression"] < 0.0:
-		print("GameManager Error: Could not parse aggression trait")
-		return {}
-	
-	if not data.has("bluffing") or data["bluffing"] < 0.0:
-		print("GameManager Error: Could not parse bluffing trait")
-		return {}
-	
-	if not data.has("risk_aversion") or data["risk_aversion"] < 0.0:
-		print("GameManager Error: Could not parse risk_aversion trait")
-		return {}
-	
-	# Trim backstory to reasonable length
-	if data["backstory"].length() > 1000:
-		data["backstory"] = data["backstory"].substr(0, 997) + "..."
-	
-	# Clamp trait values to valid range
-	data["aggression"] = clamp(data["aggression"], 0.0, 1.0)
-	data["bluffing"] = clamp(data["bluffing"], 0.0, 1.0)
-	data["risk_aversion"] = clamp(data["risk_aversion"], 0.0, 1.0)
-	
-	return data
-
-func _extract_trait_value_from_line(line: String, _keyword: String) -> float:
-	"""Extract a single trait value from a line containing 'KEYWORD: value'."""
-	var colon_pos = line.find(":")
-	if colon_pos == -1:
-		return -1.0
-	
-	var value_str = line.substr(colon_pos + 1).strip_edges()
-	return _extract_first_float(value_str)
-
-func _extract_trait_value(text: String, keywords: Array) -> float:
-	"""
-	Extract a trait value using multiple strategies.
-	Returns -1.0 if no valid value found.
-	"""
-	var upper_text = text.to_upper()
-	
-	# Try each keyword variant
-	for keyword in keywords:
-		var keyword_upper = keyword.to_upper()
-		var pos = upper_text.find(keyword_upper)
-		
-		if pos == -1:
-			continue
-		
-		# Get the rest of the line after the keyword
-		var line_start = pos
-		var line_end = upper_text.find("\n", pos)
-		if line_end == -1:
-			line_end = upper_text.length()
-		
-		var line = text.substr(line_start, line_end - line_start)
-		
-		# Strategy 1: Look for number after colon
-		var colon_pos = line.find(":")
-		if colon_pos != -1:
-			var after_colon = line.substr(colon_pos + 1).strip_edges()
-			var colon_value = _extract_first_float(after_colon)
-			if colon_value >= 0.0:
-				return colon_value
-		
-		# Strategy 2: Look for any number in the line
-		var line_value = _extract_first_float(line)
-		if line_value >= 0.0:
-			return line_value
-	
-	return -1.0
-
-func _extract_first_float(text: String) -> float:
-	"""
-	Extract the first valid float from a string.
-	More aggressive than _extract_float - finds ANY valid number.
-	Returns -1.0 if no valid number found.
-	"""
-	var cleaned = ""
-	var found_digit = false
-	var has_dot = false
-	
-	for i in range(text.length()):
-		var c = text[i]
-		
-		# Start collecting when we find a digit or minus
-		if c.is_valid_int():
-			cleaned += c
-			found_digit = true
-		elif c == "." and found_digit and not has_dot:
-			cleaned += c
-			has_dot = true
-		elif c == "-" and not found_digit:
-			cleaned += c
-		elif found_digit:
-			# We've found a number and hit a non-numeric character - stop
-			break
-	
-	if not found_digit or cleaned == "" or cleaned == "." or cleaned == "-":
-		return -1.0
-	
-	return float(cleaned)
-
-func _extract_response_content(response: String) -> String:
-	"""Extract actual response content, removing Phi-3 prompt echoes."""
-	var cleaned = response.strip_edges()
-	cleaned = cleaned.replace("\r\n", "\n")
-	cleaned = cleaned.replace("\r", "\n")
-	
-	# Phi-3 format: Response comes after <|assistant|> tag
-	var assistant_marker = "<|assistant|>"
-	var assistant_pos = cleaned.find(assistant_marker)
-	if assistant_pos != -1:
-		# Extract everything after <|assistant|>
-		cleaned = cleaned.substr(assistant_pos + assistant_marker.length()).strip_edges()
-	
-	# Remove any trailing <|end|> or <|user|> tags if present
-	var end_marker = "<|end|>"
-	var end_pos = cleaned.find(end_marker)
-	if end_pos != -1:
-		cleaned = cleaned.substr(0, end_pos).strip_edges()
-	
-	var user_marker = "<|user|>"
-	var user_pos = cleaned.find(user_marker)
-	if user_pos != -1:
-		cleaned = cleaned.substr(0, user_pos).strip_edges()
-	
-	# Fallback: Look for "### Response:" marker (old format)
-	var response_marker = "### Response:"
-	var response_start = cleaned.find(response_marker)
-	if response_start != -1:
-		cleaned = cleaned.substr(response_start + response_marker.length()).strip_edges()
-	
-	# Additional fallback: If we still see instruction markers, find first field marker
-	if cleaned.find("### Instruction:") != -1 or cleaned.find("### Input:") != -1 or cleaned.find("<|user|>") != -1:
-		var temp_lines = cleaned.split("\n")
-		var collecting = false
-		var response_lines = []
-		
-		for temp_line in temp_lines:
-			var upper_line = temp_line.strip_edges().to_upper()
-			# Start collecting when we find the first field
-			if upper_line.begins_with("NAME:") or upper_line.begins_with("AGGRESSION:"):
-				collecting = true
-			# Stop collecting if we hit another special marker
-			if upper_line.begins_with("<|") or upper_line.begins_with("###"):
-				if collecting:
-					break
-			if collecting:
-				response_lines.append(temp_line)
-		
-		if response_lines.size() > 0:
-			cleaned = "\n".join(response_lines)
-	
-	return cleaned
-
-func _extract_float(value_str: String) -> float:
-	"""Extract a float value from a string, handling common formatting issues."""
-	# Remove any non-numeric characters except dot and minus
-	var cleaned = ""
-	var has_dot = false
-	
-	for i in range(value_str.length()):
-		var c = value_str[i]
-		if c.is_valid_int() or (c == "-" and i == 0):
-			cleaned += c
-		elif c == "." and not has_dot:
-			cleaned += c
-			has_dot = true
-		elif c == " " or c == "\t":
-			continue
-		else:
-			# Stop at first non-numeric character
-			break
-	
-	if cleaned == "" or cleaned == "." or cleaned == "-":
-		return -1.0
-	
-	return float(cleaned)
 
 func delete_npc(slot_index: int):
 	"""Delete an NPC by resetting their slot to empty state."""
