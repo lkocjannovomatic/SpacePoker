@@ -1,6 +1,12 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Backup/temp files starting with ~
+~*
+**/~*
+
+# project specific ignores
 *.log
 saves/*.*
 .vscode/

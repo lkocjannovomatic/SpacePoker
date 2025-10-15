@@ -15,7 +15,7 @@ SpacePoker is a single-player desktop poker game (No-Limit Texas Hold'em) built 
 1. **Poker Engine** - Standard Texas Hold'em logic with betting rounds, hand evaluation, all-in scenarios
 2. **NPC System** - Rule-based strategy driven by 3 personality factors: `aggression`, `bluffing`, `risk_aversion` (0.0-1.0)
 3. **LLM Integration** - Separate concerns: LLM generates backstories/chat only, NOT game strategy
-4. **Persistence Layer** - Portable JSON saves next to executable for NPCs, stats, chat history (last 10 matches per NPC)
+4. **Persistence Layer** - Portable JSON saves next to executable for NPCs, stats, conversation summaries (optimized for LLM prompting)
 
 ### Critical Design Patterns
 - **LLM is NOT used for poker strategy** - Rule-based AI uses personality factors to make game decisions
@@ -76,7 +76,7 @@ var risk_aversion: float # 0.0-1.0, affects fold thresholds
 
 ### Performance Considerations
 - Local LLM responses may be slow - implement loading indicators
-- Chat history limited to last 10 matches per NPC to manage memory
+- Conversation summaries stored per NPC to optimize LLM context and manage memory
 - JSON persistence is synchronous - acceptable for desktop single-player
 
 ### UI/UX Patterns

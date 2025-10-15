@@ -21,7 +21,7 @@
 The technical spike project is designed to validate the core functionality of integrating a local LLM with the Godot engine using the `godot-llm` addon.
 
 **Main Requirements:**
-The primary goal is to create a minimal, non-blocking prototype that can send a text prompt to the local Phi-3-mini LLM and display its response. The prototype must include robust error handling to manage potential failures in the addon or the LLM itself. The resulting code should be modular and reusable for the final game.
+The primary goal is to create a minimal, non-blocking prototype that can send a text prompt to the local LLM and display its response. The prototype must include robust error handling to manage potential failures in the addon or the LLM itself. The resulting code should be modular and reusable for the final game.
 
 **Key Scripts and Scenes:**
 - **`LLMClient.gd`:** An autoload singleton script that will act as a dedicated wrapper for the `godot-llm` addon. It will abstract the complexities of the addon, providing a simple API to the rest of the application. It will manage asynchronous requests and emit signals for success (`response_received`) and failure (`error_occurred`).

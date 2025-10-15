@@ -62,7 +62,7 @@ The project follows a standard Godot project structure:
 - A maximum of 8 generated NPC opponents.
 - NPC personality driven by three specific factors (`aggression`, `bluffing`, `risk_aversion`).
 - Real-time chat with NPCs powered by a local LLM.
-- Persistence of NPC profiles, statistics, and chat history in local JSON files.
+- Persistence of NPC profiles, statistics, and conversation summaries in local JSON files.
 
 ### Out of Scope (MVP)
 - Web, mobile, or console versions.
