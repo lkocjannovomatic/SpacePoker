@@ -1,7 +1,8 @@
 extends Node
 
 # GameManager.gd - Global Autoload Singleton
-# Manages game state, NPC data persistence, LLM generation requests, and scene transitions
+# Manages game state, NPC data persistence, and scene transitions
+# Note: NPC generation logic is handled by NPCGenerator
 
 # Signals for UI state management
 signal processing_started
@@ -11,7 +12,6 @@ signal npc_data_changed
 # Constants
 const MAX_NPC_SLOTS = 8
 const SAVE_DIR = "saves/"
-const PROMPTS_DIR = "prompts/"
 const STARTING_CREDITS = 1000
 const SMALL_BLIND = 10
 const BIG_BLIND = 20
@@ -26,15 +26,24 @@ var player_stats: Dictionary = {
 	"total_losses": 0
 }
 
-# NPC generation state
-var _is_generating: bool = false
-var _temp_npc_data: Dictionary = {}  # Temporary storage during generation
+# NPC Generator reference
+var _npc_generator: Node = null
 
 func _ready():
 	print("GameManager: Initializing...")
+	_setup_npc_generator()
 	_ensure_save_directory()
 	_initialize_npc_slots()
 	load_all_data()
+
+func _setup_npc_generator():
+	"""Initialize the NPC generator and connect signals."""
+	_npc_generator = Node.new()
+	_npc_generator.set_script(load("res://scripts/NPCGenerator.gd"))
+	add_child(_npc_generator)
+	
+	_npc_generator.generation_completed.connect(_on_npc_generation_completed)
+	_npc_generator.generation_failed.connect(_on_npc_generation_failed)
 
 func _ensure_save_directory():
 	"""Create the saves directory if it doesn't exist."""
@@ -175,7 +184,7 @@ func get_npc_data(slot_index: int) -> Dictionary:
 func generate_npc(slot_index: int):
 	"""
 	Initiate NPC generation for a specific slot.
-	Uses JSON schema for structured output from LLM.
+	Delegates to NPCGenerator for actual generation logic.
 	"""
 	# Defensive check: prevent generation on occupied slot
 	if not is_slot_empty(slot_index):
@@ -185,241 +194,37 @@ func generate_npc(slot_index: int):
 	print("GameManager: Starting NPC generation for slot ", slot_index)
 	processing_started.emit()
 	
-	# Store the slot index for the callback
+	# Store the slot index for tracking
 	current_npc_index = slot_index
-	_is_generating = true
-	_temp_npc_data = _create_empty_slot()
 	
-	# Connect to LLM signals
-	if not LLMClient.response_received.is_connected(_on_llm_response):
-		LLMClient.response_received.connect(_on_llm_response)
-	
-	if not LLMClient.error_occurred.is_connected(_on_llm_error):
-		LLMClient.error_occurred.connect(_on_llm_error)
-	
-	# Create prompt for NPC generation
-	var prompt = _load_prompt_file("npc_generation.txt")
-	
-	# Define JSON schema for structured NPC output
-	var json_schema = _get_npc_json_schema()
-	
-	# Send to LLM with JSON schema
-	var success = LLMClient.send_prompt(prompt, json_schema)
-	
-	if not success:
-		_on_generation_failed("Failed to initiate NPC generation")
+	# Delegate to NPCGenerator
+	_npc_generator.generate_npc(slot_index, _create_empty_slot())
 
-func _get_npc_json_schema() -> String:
-	"""
-	Returns the JSON schema for NPC generation.
-	This ensures the LLM outputs valid JSON matching our NPC data structure.
-	"""
-	var schema = {
-		"type": "object",
-		"properties": {
-			"name": {
-				"type": "string",
-				"description": "Character name (e.g., Commander, Captain, Salvager, etc.)"
-			},
-			"backstory": {
-				"type": "string",
-				"description": "3-4 sentence backstory including profession, how they learned poker, defining characteristic, and current situation"
-			},
-			"aggression": {
-				"type": "number",
-				"minimum": 0.0,
-				"maximum": 1.0,
-				"description": "How often they bet/raise aggressively (0.0-1.0)"
-			},
-			"bluffing": {
-				"type": "number",
-				"minimum": 0.0,
-				"maximum": 1.0,
-				"description": "How likely they are to bluff (0.0-1.0)"
-			},
-			"risk_aversion": {
-				"type": "number",
-				"minimum": 0.0,
-				"maximum": 1.0,
-				"description": "How cautious they are with chips (0.0-1.0)"
-			}
-		},
-		"required": ["name", "backstory", "aggression", "bluffing", "risk_aversion"]
-	}
+func _on_npc_generation_completed(slot_index: int, npc_data: Dictionary):
+	"""Handle successful NPC generation from NPCGenerator."""
+	print("GameManager: NPC generation completed for slot ", slot_index)
 	
-	return JSON.stringify(schema)
-
-func _load_prompt_file(filename: String) -> String:
-	"""Load a prompt file from the prompts directory."""
-	var prompt_path = "res://" + PROMPTS_DIR + filename
+	# Store the generated NPC data
+	npc_slots[slot_index] = npc_data
+	save_npc_slot(slot_index)
 	
-	if not FileAccess.file_exists(prompt_path):
-		print("GameManager Error: Prompt file not found at ", prompt_path)
-		return ""
-	
-	var file = FileAccess.open(prompt_path, FileAccess.READ)
-	if file == null:
-		print("GameManager Error: Could not open prompt file: ", prompt_path)
-		return ""
-	
-	var prompt = file.get_as_text()
-	file.close()
-	
-	return prompt
-
-func _on_llm_response(response_text: String):
-	"""Handle LLM response for NPC generation (JSON format)."""
-	print("GameManager: LLM response received, parsing JSON...")
-	
-	var parsed_data = _parse_npc_json_response(response_text)
-	
-	if parsed_data.is_empty():
-		_on_generation_failed("Failed to parse NPC data from LLM JSON response")
-		return
-	
-	# Store all parsed data
-	_temp_npc_data["name"] = parsed_data["name"]
-	_temp_npc_data["backstory"] = parsed_data["backstory"]
-	_temp_npc_data["aggression"] = parsed_data["aggression"]
-	_temp_npc_data["bluffing"] = parsed_data["bluffing"]
-	_temp_npc_data["risk_aversion"] = parsed_data["risk_aversion"]
-	
-	# Save the completed NPC
-	npc_slots[current_npc_index] = _temp_npc_data
-	save_npc_slot(current_npc_index)
-	
-	print("GameManager: NPC generation complete!")
-	print("  Name: ", _temp_npc_data["name"])
-	print("  Backstory: ", _temp_npc_data["backstory"].substr(0, 100), "...")
-	print("  Aggression: ", _temp_npc_data["aggression"])
-	print("  Bluffing: ", _temp_npc_data["bluffing"])
-	print("  Risk Aversion: ", _temp_npc_data["risk_aversion"])
-	
-	# Cleanup
-	_cleanup_generation()
+	# Reset tracking
+	current_npc_index = -1
 	
 	# Notify UI
 	processing_finished.emit()
 	npc_data_changed.emit()
 
-func _parse_npc_json_response(response: String) -> Dictionary:
-	"""Parse JSON response from LLM into NPC data structure."""
-	# Clean the response by extracting JSON between Phi-3 special tokens
-	var cleaned_response = _extract_json_from_response(response)
+func _on_npc_generation_failed(error_message: String):
+	"""Handle NPC generation failure from NPCGenerator."""
+	print("GameManager: NPC generation failed - ", error_message)
 	
-	var json = JSON.new()
-	var parse_result = json.parse(cleaned_response)
-	
-	if parse_result != OK:
-		print("GameManager Error: JSON parse error at line ", json.get_error_line(), ": ", json.get_error_message())
-		print("Raw response: ", response)
-		print("Cleaned response: ", cleaned_response)
-		return {}
-	
-	var data = json.data
-	
-	# Validate all required fields are present
-	if not data is Dictionary:
-		print("GameManager Error: LLM response is not a JSON object")
-		return {}
-	
-	if not data.has("name") or data["name"] == "":
-		print("GameManager Error: Missing or empty 'name' field")
-		return {}
-	
-	if not data.has("backstory") or data["backstory"] == "":
-		print("GameManager Error: Missing or empty 'backstory' field")
-		return {}
-	
-	if not data.has("aggression"):
-		print("GameManager Error: Missing 'aggression' field")
-		return {}
-	
-	if not data.has("bluffing"):
-		print("GameManager Error: Missing 'bluffing' field")
-		return {}
-	
-	if not data.has("risk_aversion"):
-		print("GameManager Error: Missing 'risk_aversion' field")
-		return {}
-	
-	# Validate and clamp trait values
-	var result = {}
-	result["name"] = str(data["name"])
-	result["backstory"] = str(data["backstory"])
-	
-	# Ensure numeric values and clamp to valid range
-	result["aggression"] = clamp(float(data["aggression"]), 0.0, 1.0)
-	result["bluffing"] = clamp(float(data["bluffing"]), 0.0, 1.0)
-	result["risk_aversion"] = clamp(float(data["risk_aversion"]), 0.0, 1.0)
-	
-	# Trim backstory to reasonable length
-	if result["backstory"].length() > 1000:
-		result["backstory"] = result["backstory"].substr(0, 997) + "..."
-	
-	return result
-
-func _extract_json_from_response(response: String) -> String:
-	"""
-	Extract JSON content from LLM response by removing Phi-3 prompt echoes.
-	JSON result is between the last <|assistant|> and last <|end|> tags.
-	"""
-	var cleaned = response.strip_edges()
-	
-	# Normalize line endings
-	cleaned = cleaned.replace("\r\n", "\n")
-	cleaned = cleaned.replace("\r", "\n")
-	
-	# Find the last occurrence of <|assistant|> marker
-	var assistant_marker = "<|assistant|>"
-	var last_assistant_pos = cleaned.rfind(assistant_marker)
-	
-	if last_assistant_pos != -1:
-		# Extract everything after the last <|assistant|>
-		cleaned = cleaned.substr(last_assistant_pos + assistant_marker.length())
-	
-	# Find the last occurrence of <|end|> marker
-	var end_marker = "<|end|>"
-	var last_end_pos = cleaned.rfind(end_marker)
-	
-	if last_end_pos != -1:
-		# Extract everything before the last <|end|>
-		cleaned = cleaned.substr(0, last_end_pos)
-	
-	# Strip any remaining whitespace
-	cleaned = cleaned.strip_edges()
-	
-	# Log for debugging
-	if last_assistant_pos != -1 or last_end_pos != -1:
-		print("GameManager: Cleaned LLM response (removed prompt echo)")
-		print("  Original length: ", response.length(), " chars")
-		print("  Cleaned length: ", cleaned.length(), " chars")
-	
-	return cleaned
-
-func _on_llm_error(error_message: String):
-	"""Handle LLM errors during generation."""
-	print("GameManager Error: LLM error - ", error_message)
-	_on_generation_failed(error_message)
-
-func _on_generation_failed(error_message: String):
-	"""Handle generation failure and cleanup."""
-	print("GameManager Error: NPC generation failed - ", error_message)
-	_cleanup_generation()
-	processing_finished.emit()
-	# TODO: Show error dialog to user
-
-func _cleanup_generation():
-	"""Clean up generation state and disconnect signals."""
-	_is_generating = false
-	_temp_npc_data = {}
+	# Reset tracking
 	current_npc_index = -1
 	
-	# Disconnect signals
-	if LLMClient.response_received.is_connected(_on_llm_response):
-		LLMClient.response_received.disconnect(_on_llm_response)
-	if LLMClient.error_occurred.is_connected(_on_llm_error):
-		LLMClient.error_occurred.disconnect(_on_llm_error)
+	# Notify UI
+	processing_finished.emit()
+	# TODO: Show error dialog to user
 
 func delete_npc(slot_index: int):
 	"""Delete an NPC by resetting their slot to empty state and removing the save file."""
