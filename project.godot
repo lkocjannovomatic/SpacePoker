@@ -11,13 +11,14 @@ config_version=5
 [application]
 
 config/name="SpacePoker"
-run/main_scene="res://scenes/SpikeTest.tscn"
+run/main_scene="res://scenes/StartScreen.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 LLMClient="*res://scripts/LLMClient.gd"
+GameManager="*res://scripts/GameManager.gd"
 
 [enabled_addons]
 

@@ -1,0 +1,57 @@
+[gd_scene load_steps=3 format=3 uid="uid://ct8jmq2h3vyhu"]
+
+[ext_resource type="Script" path="res://scripts/StartScreen.gd" id="1_startscreen"]
+[ext_resource type="PackedScene" uid="uid://ckx7r1w5hdl7q" path="res://scenes/Dialog.tscn" id="2_dialog"]
+
+[node name="StartScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_startscreen")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "SpacePoker"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Select or Generate an Opponent"
+horizontal_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 20
+
+[node name="NPCSlotsContainer" type="GridContainer" parent="VBoxContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+columns = 4
+
+[node name="NavigationContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="StatisticsButton" type="Button" parent="VBoxContainer/NavigationContainer"]
+layout_mode = 2
+text = "Statistics"
+
+[node name="Dialog" parent="." instance=ExtResource("2_dialog")]

@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://ckx7r1w5hdl7q"]
+
+[ext_resource type="Script" path="res://scripts/Dialog.gd" id="1_dialog"]
+
+[node name="Dialog" type="ConfirmationDialog"]
+title = "Confirm"
+initial_position = 2
+size = Vector2i(400, 150)
+ok_button_text = "OK"
+cancel_button_text = "Cancel"
+script = ExtResource("1_dialog")

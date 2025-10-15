@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3 uid="uid://bwpg8xh4k5n3k"]
+
+[ext_resource type="Script" path="res://scripts/NPCSlot.gd" id="1_npcslot"]
+
+[node name="NPCSlot" type="PanelContainer"]
+custom_minimum_size = Vector2(200, 150)
+script = ExtResource("1_npcslot")
+
+[node name="EmptyStateContainer" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="GenerateButton" type="Button" parent="EmptyStateContainer"]
+layout_mode = 2
+text = "Generate NPC"
+
+[node name="GeneratingStateContainer" type="CenterContainer" parent="."]
+visible = false
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GeneratingStateContainer"]
+layout_mode = 2
+
+[node name="LoadingLabel" type="Label" parent="GeneratingStateContainer/VBoxContainer"]
+layout_mode = 2
+text = "Generating..."
+horizontal_alignment = 1
+
+[node name="SpinAnimation" type="Label" parent="GeneratingStateContainer/VBoxContainer"]
+layout_mode = 2
+text = "⏳"
+horizontal_alignment = 1
+
+[node name="OccupiedStateContainer" type="CenterContainer" parent="."]
+visible = false
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="OccupiedStateContainer"]
+layout_mode = 2
+
+[node name="NPCNameLabel" type="Label" parent="OccupiedStateContainer/VBoxContainer"]
+layout_mode = 2
+text = "NPC Name"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ButtonsContainer" type="HBoxContainer" parent="OccupiedStateContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="OccupiedStateContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+text = "Play"
+
+[node name="DeleteButton" type="Button" parent="OccupiedStateContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+text = "Delete"
