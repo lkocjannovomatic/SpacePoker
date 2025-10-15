@@ -77,8 +77,8 @@ func load_all_data():
 		if data != null:
 			npc_slots[i] = data
 		else:
-			# If file doesn't exist, create it with empty data
-			save_npc_slot(i)
+			# If file doesn't exist, keep the empty slot (no file creation)
+			print("GameManager: Slot ", i, " is empty (no save file)")
 	
 	# Load player stats
 	var stats_path = "res://" + SAVE_DIR + "player_stats.json"
@@ -87,7 +87,8 @@ func load_all_data():
 	if stats_data != null:
 		player_stats = stats_data
 	else:
-		save_player_stats()
+		# If file doesn't exist, use default stats (no file creation yet)
+		print("GameManager: Using default player stats (no save file)")
 	
 	npc_data_changed.emit()
 	print("GameManager: Data loaded successfully")
@@ -421,7 +422,7 @@ func _cleanup_generation():
 		LLMClient.error_occurred.disconnect(_on_llm_error)
 
 func delete_npc(slot_index: int):
-	"""Delete an NPC by resetting their slot to empty state."""
+	"""Delete an NPC by resetting their slot to empty state and removing the save file."""
 	if slot_index < 0 or slot_index >= MAX_NPC_SLOTS:
 		print("GameManager Error: Invalid slot index for deletion: ", slot_index)
 		return
@@ -433,8 +434,28 @@ func delete_npc(slot_index: int):
 	print("GameManager: Deleting NPC in slot ", slot_index)
 	
 	npc_slots[slot_index] = _create_empty_slot()
-	save_npc_slot(slot_index)
+	
+	# Delete the save file instead of saving an empty slot
+	_delete_save_file(slot_index)
+	
 	npc_data_changed.emit()
+
+func _delete_save_file(slot_index: int):
+	"""Delete the save file for a specific NPC slot."""
+	var file_path = "res://" + SAVE_DIR + "slot_" + str(slot_index) + ".json"
+	
+	if FileAccess.file_exists(file_path):
+		var dir = DirAccess.open("res://" + SAVE_DIR)
+		if dir:
+			var result = dir.remove("slot_" + str(slot_index) + ".json")
+			if result == OK:
+				print("GameManager: Deleted save file for slot ", slot_index)
+			else:
+				print("GameManager Error: Failed to delete save file for slot ", slot_index, ". Error: ", result)
+		else:
+			print("GameManager Error: Could not open saves directory for file deletion")
+	else:
+		print("GameManager: No save file to delete for slot ", slot_index)
 
 func start_match(slot_index: int):
 	"""Start a poker match against the NPC in the specified slot."""

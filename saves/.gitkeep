@@ -1,0 +1,2 @@
+# This file ensures the saves directory is tracked by git
+# Save files are generated at runtime and ignored by .gitignore
