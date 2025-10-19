@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://dmyk5h8rj3b7s"]
+[gd_scene load_steps=4 format=3 uid="uid://dmyk5h8rj3b7s"]
 
 [ext_resource type="Script" path="res://scripts/GameView.gd" id="1_gameview"]
+[ext_resource type="PackedScene" uid="uid://board_scene_uid" path="res://scenes/Board.tscn" id="2_board"]
+[ext_resource type="PackedScene" uid="uid://chat_scene_uid" path="res://scenes/Chat.tscn" id="3_chat"]
 
 [node name="GameView" type="Control"]
 layout_mode = 3
@@ -11,31 +13,18 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_gameview")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-alignment = 1
 
-[node name="PlaceholderLabel" type="Label" parent="VBoxContainer"]
+[node name="Board" parent="HBoxContainer" instance=ExtResource("2_board")]
 layout_mode = 2
-text = "Game View (Placeholder)"
-horizontal_alignment = 1
+size_flags_horizontal = 3
 
-[node name="NPCLabel" type="Label" parent="VBoxContainer"]
+[node name="Chat" parent="HBoxContainer" instance=ExtResource("3_chat")]
 layout_mode = 2
-text = "NPC Info"
-horizontal_alignment = 1
-
-[node name="DescriptionLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-text = "The poker table will be displayed here."
-horizontal_alignment = 1
-
-[node name="ReturnButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "Return to Menu"
+size_flags_horizontal = 3

@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 LLMClient="*res://scripts/LLMClient.gd"
 GameManager="*res://scripts/GameManager.gd"
+GameState="*res://scripts/GameState.gd"
 
 [enabled_addons]
 

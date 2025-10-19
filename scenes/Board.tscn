@@ -1,0 +1,118 @@
+[gd_scene load_steps=2 format=3 uid="uid://board_scene_uid"]
+
+[ext_resource type="Script" path="res://scripts/Board.gd" id="1_board"]
+
+[node name="Board" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_board")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InfoPanel" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="PlayerStack" type="Label" parent="VBoxContainer/InfoPanel"]
+layout_mode = 2
+text = "Player: 0"
+
+[node name="NPCStack" type="Label" parent="VBoxContainer/InfoPanel"]
+layout_mode = 2
+text = "NPC: 0"
+
+[node name="Pot" type="Label" parent="VBoxContainer/InfoPanel"]
+layout_mode = 2
+text = "Pot: 0"
+
+[node name="GamePhase" type="Label" parent="VBoxContainer/InfoPanel"]
+layout_mode = 2
+text = "Pre-Flop"
+
+[node name="CardsPanel" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="NPCCards" type="HBoxContainer" parent="VBoxContainer/CardsPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="VBoxContainer/CardsPanel/NPCCards"]
+layout_mode = 2
+text = "NPC Cards:"
+
+[node name="Card1" type="Label" parent="VBoxContainer/CardsPanel/NPCCards"]
+layout_mode = 2
+text = "?"
+
+[node name="Card2" type="Label" parent="VBoxContainer/CardsPanel/NPCCards"]
+layout_mode = 2
+text = "?"
+
+[node name="CommunityCards" type="HBoxContainer" parent="VBoxContainer/CardsPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="VBoxContainer/CardsPanel/CommunityCards"]
+layout_mode = 2
+text = "Community:"
+
+[node name="PlayerCards" type="HBoxContainer" parent="VBoxContainer/CardsPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="VBoxContainer/CardsPanel/PlayerCards"]
+layout_mode = 2
+text = "Your Cards:"
+
+[node name="Card1" type="Label" parent="VBoxContainer/CardsPanel/PlayerCards"]
+layout_mode = 2
+text = "?"
+
+[node name="Card2" type="Label" parent="VBoxContainer/CardsPanel/PlayerCards"]
+layout_mode = 2
+text = "?"
+
+[node name="BettingPanel" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ButtonsRow" type="HBoxContainer" parent="VBoxContainer/BettingPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="FoldButton" type="Button" parent="VBoxContainer/BettingPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Fold"
+disabled = true
+
+[node name="CheckCallButton" type="Button" parent="VBoxContainer/BettingPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Check / Call"
+disabled = true
+
+[node name="RaiseButton" type="Button" parent="VBoxContainer/BettingPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Raise"
+disabled = true
+
+[node name="BetSlider" type="HSlider" parent="VBoxContainer/BettingPanel"]
+layout_mode = 2
+min_value = 20.0
+max_value = 1000.0
+value = 20.0
+editable = false

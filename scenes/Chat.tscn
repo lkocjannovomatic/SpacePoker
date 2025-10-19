@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3 uid="uid://chat_scene_uid"]
+
+[ext_resource type="Script" path="res://scripts/Chat.gd" id="1_chat"]
+
+[node name="Chat" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_chat")
+
+[node name="TabContainer" type="TabContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Chat" type="Control" parent="TabContainer"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Chat"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChatDisplay" type="RichTextLabel" parent="TabContainer/Chat/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+scroll_active = true
+
+[node name="MessageInput" type="LineEdit" parent="TabContainer/Chat/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Type your message..."
+max_length = 200
+
+[node name="History" type="Control" parent="TabContainer"]
+visible = false
+layout_mode = 2
+
+[node name="HistoryDisplay" type="RichTextLabel" parent="TabContainer/History"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+bbcode_enabled = true
