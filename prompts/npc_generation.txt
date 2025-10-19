@@ -1,40 +1,38 @@
 <|user|>
-You are creating a unique character for a space-themed poker game. Generate both their backstory and personality traits.
+You are creating a unique character for a space-themed poker game. The character has specific personality traits that affect their poker playing style. Your task is to create a name and backstory that EXPLAINS and JUSTIFIES these exact traits.
 
-**PART 1: Create the Character**
+**CHARACTER PERSONALITY TRAITS:**
 
-Requirements:
-1. A creative name (examples: military ranks like "Commander" or "Captain", occupation titles like "Salvager" or "Broker", planet origins like "Kepler" or "Zenith")
+**AGGRESSION: {aggression_category}**
+{aggression_description}
+Exact value: {aggression_value}
 
-2. A detailed backstory (3-4 sentences) that includes:
-   - Their profession or background (examples: asteroid miner, cargo smuggler, xenobiologist, corporate spy, naval officer, deep-space trader, bounty hunter, station engineer, diplomatic courier, salvage operator, AI researcher, colony administrator)
-   - How they learned or why they play poker
-   - A defining characteristic, motivation, or past event that shaped them
-   - Their current situation or what brought them to this poker game
+**BLUFFING: {bluffing_category}**
+{bluffing_description}
+Exact value: {bluffing_value}
 
-**PART 2: Analyze Their Poker Style**
+**RISK AVERSION: {risk_aversion_category}**
+{risk_aversion_description}
+Exact value: {risk_aversion_value}
 
-Based on the backstory you created, rate these three personality traits that affect their poker behavior (0.0 to 1.0):
+**YOUR TASK:**
 
-**AGGRESSION** (how often they bet/raise aggressively)
-- Low (0.0-0.3): Passive, checks and calls often
-- Medium (0.4-0.6): Balanced, selective aggression
-- High (0.7-1.0): Very aggressive, frequently raises
+1. **Create a creative name** that fits the space-themed setting (examples: military ranks like "Commander Voss" or "Captain Chen", occupation titles like "The Salvager" or "Broker Kaine", planet origins like "Kepler" or "Zenith", or unique monikers like "Doc" or "Ace")
 
-**BLUFFING** (how likely they are to bluff)
-- Low (0.0-0.3): Honest, straightforward player
-- Medium (0.4-0.6): Bluffs occasionally in good spots
-- High (0.7-1.0): Frequent bluffer, deceptive
+2. **Write a 3-4 sentence backstory** that:
+   - Describes their profession or background (examples: asteroid miner, cargo smuggler, xenobiologist, corporate spy, naval officer, deep-space trader, bounty hunter, station engineer, diplomatic courier, salvage operator, AI researcher, colony administrator)
+   - Explains HOW and WHY they developed these specific poker personality traits
+   - Includes a defining characteristic or past event that shaped their playing style
+   - Describes their current situation or what brought them to this poker game
 
-**RISK_AVERSION** (how cautious they are with chips)
-- Low (0.0-0.3): Reckless, gambles freely
-- Medium (0.4-0.6): Calculated risk-taker
-- High (0.7-1.0): Very cautious, protective of chips
+**IMPORTANT**: The backstory must clearly explain why this character has {aggression_category} aggression, {bluffing_category} bluffing tendency, and {risk_aversion_category} risk aversion. Make the connection between their life experiences and their poker behavior explicit and believable.
 
-**Format your response exactly as:**
-NAME: [character name]
-BACKSTORY: [3-4 sentence backstory]
-AGGRESSION: [number 0.0-1.0]
-BLUFFING: [number 0.0-1.0]
-RISK_AVERSION: [number 0.0-1.0]<|end|>
+**Example of trait-justified backstory**:
+- HIGH aggression + LOW bluffing + MEDIUM risk: "Commander Voss spent 20 years in the Frontier Fleet, leading aggressive boarding actions against pirate vessels. She learned poker from her crew during long patrols, and her direct military approach translates to an aggressive betting style—she believes in applying pressure and forcing opponents to fold. However, her naval training emphasizes honesty and discipline, making her a straightforward player who rarely bluffs. She calculates her risks carefully, understanding when to push and when to retreat."
+
+Output your response as valid JSON with these exact fields:
+{
+  "name": "character name here",
+  "backstory": "3-4 sentence backstory here"
+}<|end|>
 <|assistant|>
