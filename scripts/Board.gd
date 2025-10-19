@@ -29,22 +29,13 @@ signal player_action_taken(action: String, amount: int)
 func _ready():
 	print("Board: Initializing...")
 	
-	# Connect to GameState signals
-	if GameState:
-		GameState.state_changed.connect(_on_game_state_changed)
-		GameState.player_stack_changed.connect(_on_player_stack_changed)
-		GameState.npc_stack_changed.connect(_on_npc_stack_changed)
-		GameState.pot_changed.connect(_on_pot_changed)
-		GameState.community_cards_dealt.connect(_on_community_cards_dealt)
-		GameState.player_cards_dealt.connect(_on_player_cards_dealt)
-	
 	# Connect betting buttons
 	fold_button.pressed.connect(_on_fold_pressed)
 	check_call_button.pressed.connect(_on_check_call_pressed)
 	raise_button.pressed.connect(_on_raise_pressed)
 	
 	# Initialize UI
-	_update_betting_controls()
+	_set_betting_controls_enabled(false)
 
 # ============================================================================
 # INITIALIZATION
@@ -67,32 +58,45 @@ func init() -> void:
 	_set_betting_controls_enabled(false)
 
 # ============================================================================
-# GAMESTATE SIGNAL HANDLERS
+# PUBLIC INTERFACE (Called by GameView)
 # ============================================================================
 
-func _on_game_state_changed(new_state: GameState.State) -> void:
-	"""Handle game state changes to enable/disable controls."""
-	print("Board: Game state changed to ", GameState.State.keys()[new_state])
+func update_controls(valid_actions: Dictionary) -> void:
+	"""
+	Enable/disable betting controls based on valid actions from PokerEngine.
+	"""
+	_set_betting_controls_enabled(true)
 	
-	# Update betting controls based on state
-	_update_betting_controls()
+	# Update check/call button
+	if valid_actions.get("can_check", false):
+		check_call_button.text = "Check"
+	else:
+		var call_amount = valid_actions.get("call_amount", 0)
+		check_call_button.text = "Call (" + str(call_amount) + ")"
 	
-	# Update game phase label
-	_update_game_phase_label(new_state)
+	# Update raise button and slider
+	var can_raise = valid_actions.get("can_raise", false)
+	var min_raise = valid_actions.get("min_raise", 0)
+	var max_raise = valid_actions.get("max_raise", 0)
+	
+	raise_button.disabled = not can_raise
+	bet_slider.editable = can_raise
+	
+	if can_raise:
+		bet_slider.min_value = min_raise
+		bet_slider.max_value = max_raise
+		bet_slider.value = min_raise
 
-func _on_player_stack_changed(new_stack: int) -> void:
-	"""Update player stack display."""
-	player_stack_label.text = "Player: " + str(new_stack)
-
-func _on_npc_stack_changed(new_stack: int) -> void:
-	"""Update NPC stack display."""
-	npc_stack_label.text = "NPC: " + str(new_stack)
-
-func _on_pot_changed(new_pot: int) -> void:
+func update_pot_label(amount: int) -> void:
 	"""Update pot display."""
-	pot_label.text = "Pot: " + str(new_pot)
+	pot_label.text = "Pot: " + str(amount)
 
-func _on_community_cards_dealt(cards: Array) -> void:
+func update_stack_labels(player_stack_val: int, npc_stack_val: int) -> void:
+	"""Update player and NPC stack displays."""
+	player_stack_label.text = "Player: " + str(player_stack_val)
+	npc_stack_label.text = "NPC: " + str(npc_stack_val)
+
+func display_community_cards(cards: Array) -> void:
 	"""Display community cards."""
 	print("Board: Displaying ", cards.size(), " community cards")
 	
@@ -100,54 +104,59 @@ func _on_community_cards_dealt(cards: Array) -> void:
 	for child in community_cards_container.get_children():
 		child.queue_free()
 	
-	# Display new cards (placeholder text for MVP)
+	# Display new cards
 	for card in cards:
 		var card_label = Label.new()
-		card_label.text = str(card)
+		card_label.text = card.to_short_string() if card.has_method("to_short_string") else str(card)
 		card_label.add_theme_font_size_override("font_size", 16)
 		community_cards_container.add_child(card_label)
 
-func _on_player_cards_dealt(cards: Array) -> void:
+func display_player_cards(cards: Array) -> void:
 	"""Display player's hole cards."""
 	print("Board: Displaying player cards")
 	
 	if cards.size() >= 1:
-		player_card_1.text = str(cards[0])
+		player_card_1.text = cards[0].to_short_string() if cards[0].has_method("to_short_string") else str(cards[0])
 	if cards.size() >= 2:
-		player_card_2.text = str(cards[1])
+		player_card_2.text = cards[1].to_short_string() if cards[1].has_method("to_short_string") else str(cards[1])
+
+func display_showdown(_player_hand: Array, npc_hand: Array, result: Dictionary) -> void:
+	"""Display showdown results."""
+	print("Board: Displaying showdown")
+	
+	# Show NPC cards
+	if npc_hand.size() >= 1:
+		npc_card_1.text = npc_hand[0].to_short_string() if npc_hand[0].has_method("to_short_string") else str(npc_hand[0])
+	if npc_hand.size() >= 2:
+		npc_card_2.text = npc_hand[1].to_short_string() if npc_hand[1].has_method("to_short_string") else str(npc_hand[1])
+	
+	# Update phase label with result
+	var message = ""
+	if result.get("tied", false):
+		message = "Tie! Pot split"
+	elif result.get("player_won", false):
+		message = "You win! " + result.get("player_hand_description", "")
+	else:
+		message = "NPC wins! " + result.get("npc_hand_description", "")
+	
+	game_phase_label.text = message
+
+# ============================================================================
+# GAMESTATE SIGNAL HANDLERS (REMOVED - Now controlled by GameView)
+# ============================================================================
+
+# The following functions have been removed as they're no longer needed:
+# - _on_game_state_changed
+# - _on_player_stack_changed
+# - _on_npc_stack_changed
+# - _on_pot_changed
+# - _on_community_cards_dealt
+# - _on_player_cards_dealt
+# These are now replaced by the public interface functions above
 
 # ============================================================================
 # BETTING CONTROLS
 # ============================================================================
-
-func _update_betting_controls() -> void:
-	"""
-	Update betting control states based on GameState.
-	Enable/disable buttons and update check/call button text.
-	"""
-	var is_player_turn = GameState.is_player_turn()
-	
-	# Enable controls only during player's turn
-	_set_betting_controls_enabled(is_player_turn)
-	
-	if is_player_turn:
-		# Update check/call button text
-		if GameState.can_check():
-			check_call_button.text = "Check"
-		else:
-			var call_amount = GameState.get_call_amount()
-			check_call_button.text = "Call (" + str(call_amount) + ")"
-		
-		# Update raise slider range
-		var min_raise = GameState.get_min_raise()
-		var max_raise = GameState.get_max_raise()
-		
-		bet_slider.min_value = min_raise
-		bet_slider.max_value = max_raise
-		bet_slider.value = min_raise
-		
-		# Disable raise if player can't raise
-		raise_button.disabled = (max_raise <= min_raise or GameState.player_stack <= 0)
 
 func _set_betting_controls_enabled(enabled: bool) -> void:
 	"""Enable or disable all betting controls."""
@@ -163,11 +172,14 @@ func _on_fold_pressed() -> void:
 
 func _on_check_call_pressed() -> void:
 	"""Handle check/call button press."""
-	if GameState.can_check():
+	# Determine action based on button text
+	if check_call_button.text.begins_with("Check"):
 		print("Board: Player clicked Check")
 		player_action_taken.emit("check", 0)
 	else:
-		var call_amount = GameState.get_call_amount()
+		# Extract call amount from button text (format: "Call (amount)")
+		var amount_text = check_call_button.text.replace("Call (", "").replace(")", "")
+		var call_amount = int(amount_text)
 		print("Board: Player clicked Call (", call_amount, ")")
 		player_action_taken.emit("call", call_amount)
 
@@ -178,37 +190,8 @@ func _on_raise_pressed() -> void:
 	player_action_taken.emit("raise", raise_amount)
 
 # ============================================================================
-# UI HELPERS
+# UI HELPERS (Removed GameState-dependent functions)
 # ============================================================================
-
-func _update_game_phase_label(state: GameState.State) -> void:
-	"""Update the game phase label based on current state."""
-	match state:
-		GameState.State.IDLE:
-			game_phase_label.text = "Waiting..."
-		GameState.State.MATCH_START:
-			game_phase_label.text = "Match Starting"
-		GameState.State.HAND_START:
-			game_phase_label.text = "New Hand"
-		GameState.State.PLAYER_TURN, GameState.State.NPC_TURN:
-			# Show betting round
-			match GameState.current_betting_round:
-				GameState.BettingRound.PRE_FLOP:
-					game_phase_label.text = "Pre-Flop"
-				GameState.BettingRound.FLOP:
-					game_phase_label.text = "Flop"
-				GameState.BettingRound.TURN:
-					game_phase_label.text = "Turn"
-				GameState.BettingRound.RIVER:
-					game_phase_label.text = "River"
-		GameState.State.SHOWDOWN:
-			game_phase_label.text = "Showdown"
-		GameState.State.HAND_END:
-			game_phase_label.text = "Hand Complete"
-		GameState.State.MATCH_END:
-			game_phase_label.text = "Match Over"
-		GameState.State.BUSY:
-			game_phase_label.text = "Processing..."
 
 func _clear_cards() -> void:
 	"""Clear all card displays."""

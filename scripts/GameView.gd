@@ -1,37 +1,33 @@
 extends Control
 
 # GameView.gd - Main poker game view controller
-# Orchestrates communication between Board and Chat components
-# Manages match initialization, NPC data, and game flow
+# Orchestrates communication between PokerEngine, NPC_AI, Board, and Chat components
+# Manages match initialization and game flow
+
+# Preload classes
+const PokerEngineClass = preload("res://scripts/PokerEngine.gd")
+const NPC_AIClass = preload("res://scripts/NPC_AI.gd")
 
 # Child component references
 @onready var board = $HBoxContainer/Board
 @onready var chat = $HBoxContainer/Chat
 
+# Poker components
+var poker_engine: PokerEngineClass = null
+var npc_ai: NPC_AIClass = null
+
 # Current match data
 var current_npc: Dictionary = {}
-var npc_ai_timer: Timer = null
 
 # Constants
-const NPC_ACTION_MIN_DELAY = 0.5  # Minimum seconds before NPC acts
-const NPC_ACTION_MAX_DELAY = 1.5  # Maximum seconds before NPC acts
+const NPC_CHAT_DELAY = 0.3  # Delay before poker action after chat response
 
 func _ready():
 	print("GameView: Initializing...")
 	
-	# Create NPC AI timer
-	npc_ai_timer = Timer.new()
-	npc_ai_timer.one_shot = true
-	npc_ai_timer.timeout.connect(_on_npc_ai_timer_timeout)
-	add_child(npc_ai_timer)
-	
 	# Connect to Board signals
 	if board:
 		board.player_action_taken.connect(_on_player_action_taken)
-	
-	# Connect to GameState signals
-	if GameState:
-		GameState.state_changed.connect(_on_game_state_changed)
 	
 	# Initialize match
 	_initialize_match()
@@ -43,7 +39,7 @@ func _ready():
 func _initialize_match() -> void:
 	"""
 	Initialize the match with the selected NPC.
-	Called automatically when GameView loads.
+	Creates PokerEngine and NPC_AI instances.
 	"""
 	print("GameView: Initializing match")
 	
@@ -77,8 +73,40 @@ func _initialize_match() -> void:
 		# Request opening line from NPC
 		chat.request_opening_line()
 	
-	# Start the match in GameState
-	GameState.start_new_match(GameManager.STARTING_CREDITS)
+	# Create PokerEngine
+	poker_engine = PokerEngineClass.new(
+		GameManager.STARTING_CREDITS,
+		GameManager.STARTING_CREDITS,
+		false  # NPC is dealer first hand
+	)
+	
+	# Connect PokerEngine signals
+	poker_engine.hand_started.connect(_on_hand_started)
+	poker_engine.pot_updated.connect(_on_pot_updated)
+	poker_engine.player_turn.connect(_on_player_turn)
+	poker_engine.npc_turn.connect(_on_npc_turn)
+	poker_engine.community_cards_dealt.connect(_on_community_cards_dealt)
+	poker_engine.player_cards_dealt.connect(_on_player_cards_dealt)
+	poker_engine.showdown.connect(_on_showdown)
+	poker_engine.hand_ended.connect(_on_hand_ended)
+	
+	# Create NPC AI
+	npc_ai = NPC_AIClass.new()
+	add_child(npc_ai)
+	
+	# Initialize NPC AI with personality
+	var personality = {
+		"aggression": current_npc.get("aggression", 0.5),
+		"bluffing": current_npc.get("bluffing", 0.5),
+		"risk_aversion": current_npc.get("risk_aversion", 0.5)
+	}
+	npc_ai.initialize(personality)
+	
+	# Connect NPC AI signals
+	npc_ai.action_chosen.connect(_on_npc_action_chosen)
+	
+	# Start first hand
+	poker_engine.start_new_hand()
 
 func _load_chat_history() -> String:
 	"""
@@ -160,123 +188,120 @@ func _format_chat_history(history_data: Variant) -> String:
 func _on_player_action_taken(action: String, amount: int) -> void:
 	"""
 	Handle player actions from the Board.
-	Translate to GameState calls.
+	Forward to PokerEngine.
 	"""
 	print("GameView: Player action - ", action, " (", amount, ")")
 	
-	match action:
-		"fold":
-			GameState.player_fold()
-		"check":
-			GameState.player_check()
-		"call":
-			GameState.player_call()
-		"raise":
-			GameState.player_raise(amount)
-		_:
-			print("GameView Warning: Unknown player action - ", action)
+	if poker_engine:
+		poker_engine.submit_action(true, action, amount)
 
 # ============================================================================
-# GAME STATE MONITORING
+# POKER ENGINE SIGNAL HANDLERS
 # ============================================================================
 
-func _on_game_state_changed(new_state: GameState.State) -> void:
-	"""
-	Monitor game state changes to trigger NPC AI.
-	"""
-	print("GameView: Game state changed to ", GameState.State.keys()[new_state])
+func _on_hand_started(player_stack_val: int, npc_stack_val: int) -> void:
+	"""Handle hand start from PokerEngine."""
+	print("GameView: Hand started - Player: ", player_stack_val, ", NPC: ", npc_stack_val)
 	
-	# If it's NPC's turn, trigger NPC AI after a delay
-	if new_state == GameState.State.NPC_TURN:
-		_trigger_npc_turn()
+	# Update Board displays
+	if board:
+		board.update_stack_labels(player_stack_val, npc_stack_val)
+
+func _on_pot_updated(new_pot: int) -> void:
+	"""Handle pot update from PokerEngine."""
+	if board:
+		board.update_pot_label(new_pot)
+
+func _on_player_turn(valid_actions: Dictionary) -> void:
+	"""Handle player turn from PokerEngine."""
+	print("GameView: Player's turn")
 	
-	# If match ended, save chat history and show summary
-	if new_state == GameState.State.MATCH_END:
-		_on_match_end()
+	if board:
+		board.update_controls(valid_actions)
 
-# ============================================================================
-# NPC AI (Placeholder)
-# ============================================================================
-
-func _trigger_npc_turn() -> void:
-	"""
-	Trigger NPC's turn with a realistic delay.
-	First checks for pending chat response, then makes poker decision.
-	"""
-	print("GameView: Triggering NPC turn")
+func _on_npc_turn(decision_context: Dictionary) -> void:
+	"""Handle NPC turn from PokerEngine."""
+	print("GameView: NPC's turn - delegating to NPC_AI")
 	
-	# Random delay for realism
-	var delay = randf_range(NPC_ACTION_MIN_DELAY, NPC_ACTION_MAX_DELAY)
-	npc_ai_timer.start(delay)
-
-func _on_npc_ai_timer_timeout() -> void:
-	"""
-	Execute NPC's turn after timer delay.
-	"""
-	# Check for pending chat response first
+	# Check if chat has pending response
 	if chat and chat.has_pending_response():
 		var response = chat.get_pending_response()
 		chat.display_npc_message(response)
 		
 		# Brief delay before poker action
-		await get_tree().create_timer(0.3).timeout
+		await get_tree().create_timer(NPC_CHAT_DELAY).timeout
 	
-	# Execute poker action (placeholder - simple random strategy)
-	_execute_npc_poker_action()
+	# Trigger NPC AI decision
+	if npc_ai:
+		npc_ai.make_decision(decision_context)
 
-func _execute_npc_poker_action() -> void:
-	"""
-	Execute NPC's poker action.
-	Placeholder logic - will be replaced by personality-driven AI.
-	"""
-	if not GameState.is_npc_turn():
-		print("GameView Warning: _execute_npc_poker_action called but not NPC's turn")
-		return
+func _on_community_cards_dealt(phase: String, cards: Array) -> void:
+	"""Handle community cards being dealt."""
+	print("GameView: Community cards dealt - ", phase)
 	
-	print("GameView: NPC making poker decision (placeholder logic)")
+	if board:
+		board.display_community_cards(cards)
+
+func _on_player_cards_dealt(cards: Array) -> void:
+	"""Handle player cards being dealt."""
+	print("GameView: Player cards dealt")
 	
-	# Placeholder: Simple random strategy
-	var action_roll = randf()
+	if board:
+		board.display_player_cards(cards)
+
+func _on_showdown(player_hand: Array, npc_hand: Array, result: Dictionary) -> void:
+	"""Handle showdown."""
+	print("GameView: Showdown - ", result)
 	
-	if action_roll < 0.3:
-		# 30% fold
-		GameState.npc_fold()
-	elif action_roll < 0.7:
-		# 40% call/check
-		if GameState.current_bet == GameState.npc_bet_this_round:
-			GameState.npc_check()
+	if board:
+		board.display_showdown(player_hand, npc_hand, result)
+
+func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
+	"""Handle hand end."""
+	print("GameView: Hand ended - Winner: ", "Player" if winner_is_player else "NPC", " (pot: ", pot_amount, ")")
+	
+	# Update stack displays
+	if board and poker_engine:
+		board.update_stack_labels(poker_engine.get_player_stack(), poker_engine.get_npc_stack())
+	
+	# Check if match is over
+	if poker_engine:
+		if poker_engine.get_player_stack() <= 0:
+			_on_match_end(false)
+		elif poker_engine.get_npc_stack() <= 0:
+			_on_match_end(true)
 		else:
-			GameState.npc_call()
-	else:
-		# 30% raise
-		var min_raise = GameState.get_min_raise()
-		var npc_max = GameState.npc_bet_this_round + GameState.npc_stack
-		
-		if npc_max > min_raise:
-			var raise_amount = randi_range(min_raise, mini(min_raise * 2, npc_max))
-			GameState.npc_raise(raise_amount)
-		else:
-			# Can't raise, just call
-			if GameState.current_bet == GameState.npc_bet_this_round:
-				GameState.npc_check()
-			else:
-				GameState.npc_call()
+			# Start next hand after delay
+			await get_tree().create_timer(2.0).timeout
+			poker_engine.start_new_hand()
+
+func _on_npc_action_chosen(action: String, amount: int) -> void:
+	"""Handle NPC AI action choice."""
+	print("GameView: NPC chose action - ", action, " (", amount, ")")
+	
+	if poker_engine:
+		poker_engine.submit_action(false, action, amount)
 
 # ============================================================================
 # MATCH END
 # ============================================================================
 
-func _on_match_end() -> void:
+func _on_match_end(player_won: bool) -> void:
 	"""
 	Handle match completion.
-	Save chat history and prepare for transition.
+	Save chat history, record result, and return to start screen.
 	"""
-	print("GameView: Match ended")
+	print("GameView: Match ended - Player won: ", player_won)
+	
+	# Record result in GameManager
+	GameManager.record_match_result(player_won)
 	
 	# TODO: Save current chat conversation to history file
 	# TODO: Show match summary screen
 	
-	# For now, GameState automatically returns to start screen after delay
+	# Return to start screen after delay
+	await get_tree().create_timer(3.0).timeout
+	GameManager.return_to_start_screen()
 
 # ============================================================================
 # CLEANUP
@@ -286,9 +311,14 @@ func _exit_tree() -> void:
 	"""Clean up when leaving GameView."""
 	print("GameView: Cleaning up")
 	
-	# Reset GameState
-	if GameState:
-		GameState.reset()
+	# Clean up PokerEngine
+	if poker_engine:
+		poker_engine = null
+	
+	# Clean up NPC AI
+	if npc_ai:
+		npc_ai.queue_free()
+		npc_ai = null
 	
 	# Reset components
 	if board:
@@ -296,7 +326,3 @@ func _exit_tree() -> void:
 	
 	if chat:
 		chat.reset()
-	
-	# Stop timer
-	if npc_ai_timer:
-		npc_ai_timer.stop()
