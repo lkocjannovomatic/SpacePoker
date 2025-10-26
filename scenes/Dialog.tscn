@@ -6,6 +6,6 @@
 title = "Confirm"
 initial_position = 2
 size = Vector2i(400, 150)
-ok_button_text = "OK"
-cancel_button_text = "Cancel"
+ok_button_text = "CONFIRM"
+cancel_button_text = "CANCEL"
 script = ExtResource("1_dialog")

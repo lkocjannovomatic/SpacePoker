@@ -14,6 +14,7 @@ signal delete_requested(slot_index: int)
 @onready var generate_button = $EmptyStateContainer/GenerateButton
 @onready var play_button = $OccupiedStateContainer/VBoxContainer/ButtonsContainer/PlayButton
 @onready var delete_button = $OccupiedStateContainer/VBoxContainer/ButtonsContainer/DeleteButton
+@onready var animation_player = $GeneratingStateContainer/AnimationPlayer
 
 var slot_index: int = -1
 var slot_is_processing: bool = false

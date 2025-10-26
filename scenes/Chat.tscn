@@ -1,56 +1,94 @@
-[gd_scene load_steps=2 format=3 uid="uid://chat_scene_uid"]
+[gd_scene load_steps=4 format=3 uid="uid://chat_scene_uid"]
 
 [ext_resource type="Script" path="res://scripts/Chat.gd" id="1_chat"]
+[ext_resource type="Texture2D" uid="uid://b1aq5liqv6pd6" path="res://assets/ui/panels/panel_crt.png" id="2_panel_crt"]
 
-[node name="Chat" type="Control"]
-layout_mode = 3
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_crt"]
+texture = ExtResource("2_panel_crt")
+texture_margin_left = 15.0
+texture_margin_top = 15.0
+texture_margin_right = 15.0
+texture_margin_bottom = 15.0
+
+[node name="Chat" type="PanelContainer"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_crt")
 script = ExtResource("1_chat")
 
-[node name="TabContainer" type="TabContainer" parent="."]
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="CHAT" type="Control" parent="MarginContainer/TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/CHAT"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 5
 
-[node name="Chat" type="Control" parent="TabContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/CHAT/VBoxContainer"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Chat"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="ChatDisplay" type="RichTextLabel" parent="TabContainer/Chat/VBoxContainer"]
+[node name="ChatDisplay" type="RichTextLabel" parent="MarginContainer/TabContainer/CHAT/VBoxContainer/ScrollContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
-scroll_active = true
 
-[node name="MessageInput" type="LineEdit" parent="TabContainer/Chat/VBoxContainer"]
+[node name="InputContainer" type="HBoxContainer" parent="MarginContainer/TabContainer/CHAT/VBoxContainer"]
 layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="MessageInput" type="LineEdit" parent="MarginContainer/TabContainer/CHAT/VBoxContainer/InputContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 placeholder_text = "Type your message..."
 max_length = 200
 
-[node name="History" type="Control" parent="TabContainer"]
+[node name="SendButton" type="Button" parent="MarginContainer/TabContainer/CHAT/VBoxContainer/InputContainer"]
+layout_mode = 2
+text = "SEND"
+
+[node name="LoadingIndicator" type="Label" parent="MarginContainer/TabContainer/CHAT/VBoxContainer"]
 visible = false
 layout_mode = 2
+text = "⏳ Waiting for response..."
+horizontal_alignment = 1
 
-[node name="HistoryDisplay" type="RichTextLabel" parent="TabContainer/History"]
+[node name="HISTORY" type="Control" parent="MarginContainer/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/HISTORY"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="HistoryDisplay" type="RichTextLabel" parent="MarginContainer/TabContainer/HISTORY/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 bbcode_enabled = true

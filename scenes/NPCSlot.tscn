@@ -1,6 +1,29 @@
-[gd_scene load_steps=2 format=3 uid="uid://bwpg8xh4k5n3k"]
+[gd_scene load_steps=5 format=3 uid="uid://bwpg8xh4k5n3k"]
 
 [ext_resource type="Script" path="res://scripts/NPCSlot.gd" id="1_npcslot"]
+[ext_resource type="Texture2D" uid="uid://cc5vhbxngot0k" path="res://assets/ui/spinner.png" id="2_spinner"]
+
+[sub_resource type="Animation" id="Animation_spinner"]
+resource_name = "spin"
+length = 2.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("VBoxContainer/SpinnerTexture:rotation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [0.0, 6.28319]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
+_data = {
+"spin": SubResource("Animation_spinner")
+}
 
 [node name="NPCSlot" type="PanelContainer"]
 custom_minimum_size = Vector2(200, 150)
@@ -19,16 +42,26 @@ layout_mode = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="GeneratingStateContainer"]
 layout_mode = 2
+theme_override_constants/separation = 10
 
 [node name="LoadingLabel" type="Label" parent="GeneratingStateContainer/VBoxContainer"]
 layout_mode = 2
 text = "Generating..."
 horizontal_alignment = 1
 
-[node name="SpinAnimation" type="Label" parent="GeneratingStateContainer/VBoxContainer"]
+[node name="SpinnerTexture" type="TextureRect" parent="GeneratingStateContainer/VBoxContainer"]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-text = "⏳"
-horizontal_alignment = 1
+size_flags_horizontal = 4
+texture = ExtResource("2_spinner")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="GeneratingStateContainer"]
+autoplay = "spin"
+libraries = {
+"": SubResource("AnimationLibrary_1")
+}
 
 [node name="OccupiedStateContainer" type="CenterContainer" parent="."]
 visible = false

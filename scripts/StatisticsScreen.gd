@@ -2,9 +2,9 @@ extends Control
 
 # StatisticsScreen.gd - Display player statistics and per-NPC records
 
-@onready var return_button = $VBoxContainer/ReturnButton
-@onready var stats_container = $VBoxContainer/ScrollContainer/StatsVBoxContainer
-@onready var global_stats_label = $VBoxContainer/ScrollContainer/StatsVBoxContainer/GlobalStatsLabel
+@onready var return_button = $MarginContainer/PanelContainer/VBoxContainer/ButtonContainer/ReturnButton
+@onready var stats_container = $MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer/PerNPCStats
+@onready var global_stats_label = $MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer/GlobalStatsLabel
 
 func _ready():
 	return_button.pressed.connect(_on_return_pressed)

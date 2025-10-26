@@ -9,8 +9,15 @@ const PokerEngineClass = preload("res://scripts/PokerEngine.gd")
 const NPC_AIClass = preload("res://scripts/NPC_AI.gd")
 
 # Child component references
-@onready var board = $HBoxContainer/Board
-@onready var chat = $HBoxContainer/Chat
+@onready var board = $HBoxContainer/BoardContainer/Board
+@onready var chat = $HBoxContainer/ChatSidebar/Chat
+
+# Betting controls (in GameView, not Board)
+@onready var betting_controls = $HBoxContainer/BoardContainer/BettingControls
+@onready var fold_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/FoldButton
+@onready var check_call_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/CheckCallButton
+@onready var raise_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/RaiseButton
+@onready var bet_slider = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer/BetSlider
 
 # Poker components
 var poker_engine: PokerEngineClass = null
@@ -61,6 +68,8 @@ func _initialize_match() -> void:
 	# Initialize Board
 	if board:
 		board.init()
+		# Initialize betting controls from GameView
+		board.init_betting_controls(fold_button, check_call_button, raise_button, bet_slider)
 	
 	# Initialize Chat with NPC data
 	if chat:

@@ -1,6 +1,16 @@
-[gd_scene load_steps=2 format=3 uid="uid://c5qp7nhgx8w4b"]
+[gd_scene load_steps=6 format=3 uid="uid://c5qp7nhgx8w4b"]
 
 [ext_resource type="Script" path="res://scripts/StatisticsScreen.gd" id="1_statistics"]
+[ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="2_background"]
+[ext_resource type="FontFile" uid="uid://cstyi01rp6ehx" path="res://assets/fonts/Orbitron-Regular.ttf" id="3_orbitron"]
+[ext_resource type="Texture2D" uid="uid://2bvtflvu7fid" path="res://assets/ui/panels/panel_terminal.png" id="4_panel_terminal"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_terminal"]
+texture = ExtResource("4_panel_terminal")
+texture_margin_left = 20.0
+texture_margin_top = 20.0
+texture_margin_right = 20.0
+texture_margin_bottom = 20.0
 
 [node name="StatisticsScreen" type="Control"]
 layout_mode = 3
@@ -11,33 +21,100 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_statistics")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("2_background")
+expand_mode = 1
+stretch_mode = 6
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 100
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 100
+theme_override_constants/margin_bottom = 50
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer"]
 layout_mode = 2
-text = "Statistics"
+theme_override_styles/panel = SubResource("StyleBoxTexture_terminal")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="MarginTop" type="Control" parent="MarginContainer/PanelContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_fonts/font = ExtResource("3_orbitron")
+theme_override_font_sizes/font_size = 36
+text = "MISSION LOG - STATISTICS"
 horizontal_alignment = 1
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/PanelContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StatsVBoxContainer" type="VBoxContainer" parent="VBoxContainer/ScrollContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 10
 
-[node name="GlobalStatsLabel" type="Label" parent="VBoxContainer/ScrollContainer/StatsVBoxContainer"]
+[node name="StatsVBoxContainer" type="VBoxContainer" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer"]
 layout_mode = 2
-text = "Overall Stats"
+size_flags_horizontal = 3
+theme_override_constants/separation = 15
 
-[node name="ReturnButton" type="Button" parent="VBoxContainer"]
+[node name="GlobalStatsLabel" type="RichTextLabel" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer"]
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-size_flags_horizontal = 4
-text = "Return to Menu"
+bbcode_enabled = true
+text = "[b]OVERALL PERFORMANCE[/b]
+Total Matches: 0
+Wins: 0
+Losses: 0
+Win Rate: 0%"
+fit_content = true
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer"]
+layout_mode = 2
+
+[node name="PerNPCLabel" type="Label" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_orbitron")
+theme_override_font_sizes/font_size = 20
+text = "PER-OPPONENT RECORDS"
+
+[node name="PerNPCStats" type="VBoxContainer" parent="MarginContainer/PanelContainer/VBoxContainer/ScrollContainer/MarginContainer/StatsVBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ButtonContainer" type="HBoxContainer" parent="MarginContainer/PanelContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ReturnButton" type="Button" parent="MarginContainer/PanelContainer/VBoxContainer/ButtonContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "RETURN TO BRIDGE"
+
+[node name="MarginBottom" type="Control" parent="MarginContainer/PanelContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2

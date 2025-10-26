@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://card_scene"]
+
+[ext_resource type="Script" path="res://scripts/Card.gd" id="1_card"]
+[ext_resource type="Texture2D" uid="uid://c4t1d3mt4hi2h" path="res://assets/cards/card_back.png" id="2_card_back"]
+
+[node name="Card" type="TextureRect"]
+custom_minimum_size = Vector2(80, 120)
+texture = ExtResource("2_card_back")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("1_card")

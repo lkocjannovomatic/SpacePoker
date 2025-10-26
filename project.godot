@@ -25,6 +25,10 @@ GameState="*res://scripts/GameState.gd"
 
 enabled=PackedStringArray("godot_llm")
 
+[gui]
+
+theme/custom="res://themes/main_theme.tres"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

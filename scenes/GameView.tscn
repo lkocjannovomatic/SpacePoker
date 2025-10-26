@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://dmyk5h8rj3b7s"]
+[gd_scene load_steps=6 format=3 uid="uid://dmyk5h8rj3b7s"]
 
 [ext_resource type="Script" path="res://scripts/GameView.gd" id="1_gameview"]
 [ext_resource type="PackedScene" uid="uid://board_scene_uid" path="res://scenes/Board.tscn" id="2_board"]
 [ext_resource type="PackedScene" uid="uid://chat_scene_uid" path="res://scenes/Chat.tscn" id="3_chat"]
+[ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="4_background"]
+[ext_resource type="Texture2D" uid="uid://dt0inyw85e8dw" path="res://assets/ui/panels/panel_modal.png" id="5_panel_modal"]
 
 [node name="GameView" type="Control"]
 layout_mode = 3
@@ -13,6 +15,17 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_gameview")
 
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_background")
+expand_mode = 1
+stretch_mode = 6
+
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -21,10 +34,122 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Board" parent="HBoxContainer" instance=ExtResource("2_board")]
+[node name="BoardContainer" type="MarginContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 10
 
-[node name="Chat" parent="HBoxContainer" instance=ExtResource("3_chat")]
+[node name="Board" parent="HBoxContainer/BoardContainer" instance=ExtResource("2_board")]
+layout_mode = 2
+
+[node name="BettingControls" type="PanelContainer" parent="HBoxContainer/BoardContainer"]
+visible = false
+layout_mode = 2
+offset_left = 10.0
+offset_top = 400.0
+offset_right = 310.0
+offset_bottom = 550.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
+layout_mode = 2
+text = "YOUR TURN"
+horizontal_alignment = 1
+
+[node name="ButtonsRow" type="HBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="FoldButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "FOLD"
+
+[node name="CheckCallButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "CHECK"
+
+[node name="RaiseButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "RAISE"
+
+[node name="SliderContainer" type="VBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
+layout_mode = 2
+
+[node name="AmountLabel" type="Label" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer"]
+layout_mode = 2
+text = "Raise Amount: 20"
+horizontal_alignment = 1
+
+[node name="BetSlider" type="HSlider" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer"]
+layout_mode = 2
+min_value = 20.0
+max_value = 1000.0
+step = 10.0
+value = 20.0
+
+[node name="ChatSidebar" type="MarginContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Chat" parent="HBoxContainer/ChatSidebar" instance=ExtResource("3_chat")]
+layout_mode = 2
+
+[node name="WinnerOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="CenterContainer" type="CenterContainer" parent="WinnerOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="WinnerOverlay/CenterContainer"]
+custom_minimum_size = Vector2(400, 250)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="WinnerOverlay/CenterContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="WinnerLabel" type="Label" parent="WinnerOverlay/CenterContainer/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "PLAYER WINS!"
+horizontal_alignment = 1
+
+[node name="HandLabel" type="Label" parent="WinnerOverlay/CenterContainer/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "with a Full House"
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="WinnerOverlay/CenterContainer/PanelContainer/VBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "CONTINUE"

@@ -49,11 +49,13 @@ var community_cards: Array = []
 var player_stack: int = 0
 var player_hand: Array = []
 var player_bet_this_round: int = 0
+var player_has_acted: bool = false
 
 # NPC state
 var npc_stack: int = 0
 var npc_hand: Array = []
 var npc_bet_this_round: int = 0
+var npc_has_acted: bool = false
 
 # Dealer tracking (alternates each hand)
 var dealer_is_player: bool = false
@@ -93,6 +95,8 @@ func start_new_hand() -> void:
 	current_bet = 0
 	player_bet_this_round = 0
 	npc_bet_this_round = 0
+	player_has_acted = false
+	npc_has_acted = false
 	hand_phase = HandPhase.PRE_FLOP
 	community_cards.clear()
 	player_hand.clear()
@@ -209,6 +213,8 @@ func _complete_betting_round() -> void:
 	player_bet_this_round = 0
 	npc_bet_this_round = 0
 	current_bet = 0
+	player_has_acted = false
+	npc_has_acted = false
 	
 	# Advance to next phase
 	match hand_phase:
@@ -294,11 +300,13 @@ func _handle_fold(is_player: bool) -> void:
 	"""Handle a fold action."""
 	if is_player:
 		print("PokerEngine: Player folds")
+		player_has_acted = true
 		# NPC wins pot
 		npc_stack += pot
 		_end_hand(false)
 	else:
 		print("PokerEngine: NPC folds")
+		npc_has_acted = true
 		# Player wins pot
 		player_stack += pot
 		_end_hand(true)
@@ -306,6 +314,12 @@ func _handle_fold(is_player: bool) -> void:
 func _handle_check(is_player: bool) -> void:
 	"""Handle a check action."""
 	print("PokerEngine: ", "Player" if is_player else "NPC", " checks")
+	
+	# Mark player as having acted
+	if is_player:
+		player_has_acted = true
+	else:
+		npc_has_acted = true
 	
 	# Check if both players have acted
 	if _both_players_acted():
@@ -326,6 +340,7 @@ func _handle_call(is_player: bool) -> void:
 		player_stack -= amount_to_call
 		player_bet_this_round += amount_to_call
 		pot += amount_to_call
+		player_has_acted = true
 		
 		print("PokerEngine: Player calls ", amount_to_call)
 	else:
@@ -335,6 +350,7 @@ func _handle_call(is_player: bool) -> void:
 		npc_stack -= amount_to_call
 		npc_bet_this_round += amount_to_call
 		pot += amount_to_call
+		npc_has_acted = true
 		
 		print("PokerEngine: NPC calls ", amount_to_call)
 	
@@ -353,6 +369,10 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		player_bet_this_round = player_bet_this_round + additional
 		pot += additional
 		current_bet = player_bet_this_round
+		player_has_acted = true
+		
+		# Reset NPC acted flag since they need to respond to the raise
+		npc_has_acted = false
 		
 		print("PokerEngine: Player raises to ", player_bet_this_round, " (additional: ", additional, ")")
 		
@@ -367,6 +387,10 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		npc_bet_this_round = npc_bet_this_round + additional
 		pot += additional
 		current_bet = npc_bet_this_round
+		npc_has_acted = true
+		
+		# Reset player acted flag since they need to respond to the raise
+		player_has_acted = false
 		
 		print("PokerEngine: NPC raises to ", npc_bet_this_round, " (additional: ", additional, ")")
 		
@@ -416,7 +440,7 @@ func _showdown() -> void:
 	else:
 		# Tie - split pot
 		print("PokerEngine: Tie - pot split")
-		var half_pot = pot / 2  # Integer division intentional
+		var half_pot = floori(pot / 2.0)  # Integer division with floor
 		player_stack += half_pot
 		npc_stack += (pot - half_pot)  # Give odd chip to NPC
 		result.tied = true
@@ -490,8 +514,11 @@ func get_decision_context() -> Dictionary:
 	}
 
 func _both_players_acted() -> bool:
-	"""Check if both players have acted and bets are matched."""
-	return player_bet_this_round == npc_bet_this_round
+	"""
+	Check if both players have acted and bets are matched.
+	This determines if the betting round is complete.
+	"""
+	return player_has_acted and npc_has_acted and (player_bet_this_round == npc_bet_this_round)
 
 func get_player_stack() -> int:
 	"""Get current player stack."""

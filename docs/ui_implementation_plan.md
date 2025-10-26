@@ -504,10 +504,15 @@ GameView (Control)
 ├── HBoxContainer (3:1 ratio)
 │   ├── BoardContainer (Board.tscn instance) - Stretch ratio: 3
 │   │   └── BettingControls (Panel)
-│   │       ├── FoldButton
-│   │       ├── CheckCallButton
-│   │       ├── RaiseButton
-│   │       └── BetSlider (HSlider)
+│   │       └── VBoxContainer
+│   │           ├── SliderContainer (HBoxContainer)
+│   │           │   ├── SliderLabel
+│   │           │   ├── BetSlider (HSlider)
+│   │           │   └── RaiseAmountLabel
+│   │           └── ButtonsContainer (HBoxContainer)
+│   │               ├── FoldButton
+│   │               ├── CheckCallButton
+│   │               └── RaiseButton
 │   └── ChatSidebar (Chat.tscn instance) - Stretch ratio: 1
 ├── WinnerOverlay (Panel - initially hidden)
 │   └── VBoxContainer
@@ -537,24 +542,46 @@ GameView (Control)
 4. **Add Betting Controls (on Board):**
    - Create Panel with console styling
    - Position: Bottom-center of board, above player hand
-   - Layout: HBoxContainer
+   - Layout: VBoxContainer
+     - Top: SliderContainer (HBoxContainer)
+       - SliderLabel (Label showing "BET AMOUNT:")
+       - RaiseAmountLabel (Label showing "$XXX")
+     - Bottom: ButtonsContainer (HBoxContainer)
+       - FoldButton
+       - CheckCallButton
+       - RaiseButton
    - **Fold Button:**
      - Text: "FOLD"
      - Always enabled during player turn
+     - Disabled when not player's turn
    - **Check/Call Button:**
-     - Text: Dynamic ("CHECK" or "CALL $XX")
-     - Enabled based on game state
+     - Text: Dynamic based on game state:
+       - "CHECK" when no bet to call
+       - "CALL $XX" when NPC has bet
+       - "CALL $XX (ALL-IN)" when calling puts player all-in
+     - Enabled during player turn when valid action
+     - Disabled when player must fold or raise only
    - **Raise Button:**
-     - Text: "RAISE"
-     - Enabled when player can raise
+     - Text: Dynamic based on game state:
+       - "BET" when no bet has been made (first to act)
+       - "RAISE" when responding to a bet
+       - "ALL-IN" when slider at maximum value
+     - Enabled when player can legally raise/bet
+     - Disabled when player's stack doesn't allow minimum raise
    - **Bet Slider:**
      - HSlider with custom textures
      - Grabber: `slider_grabber.png`
      - Track: `slider_track.png`
-     - Min value: Minimum legal raise
-     - Max value: Player's remaining stack
+     - Min value: Minimum legal raise (typically 2x current bet or big blind)
+     - Max value: Player's remaining stack (all-in amount)
      - Step: Blind increment (e.g., 10)
-     - Show current value in label above slider
+     - Default position: Minimum legal raise
+     - Updates RaiseAmountLabel in real-time as dragged
+     - Disabled when player cannot raise
+   - **All Control States:**
+     - All betting controls hidden/disabled when not player's turn
+     - All controls visible and appropriately enabled during player's turn
+     - Controls remain visible but disabled during NPC turn for visual continuity
 
 5. **Instance Chat Scene:**
    - Add Chat.tscn as child of HBoxContainer
@@ -579,13 +606,37 @@ GameView (Control)
 
 7. **Script Logic (`GameView.gd`):**
    - Reference to Board, Chat, BettingControls, WinnerOverlay
-   - Method `enable_player_actions()` / `disable_player_actions()`
-   - Method `update_check_call_button(amount: int)` - Change text dynamically
-   - Method `update_bet_slider(min_val: int, max_val: int)`
+   - References to individual control elements:
+     - FoldButton, CheckCallButton, RaiseButton
+     - BetSlider, RaiseAmountLabel
+   - Method `enable_player_actions(can_check: bool, call_amount: int, min_raise: int, max_raise: int)`:
+     - Shows and enables betting controls
+     - Sets CheckCall button text ("CHECK" or "CALL $XX")
+     - Sets Raise button text ("BET", "RAISE", or "ALL-IN")
+     - Configures slider min/max values
+     - Updates RaiseAmountLabel
+   - Method `disable_player_actions()`:
+     - Disables all betting controls
+     - Called when NPC's turn or between hands
+   - Method `update_check_call_button(amount: int)`:
+     - Changes button text dynamically
+     - Handles all-in display
+   - Method `update_bet_slider_value()`:
+     - Updates RaiseAmountLabel as slider moves
+     - Updates Raise button text if at max (ALL-IN)
+   - Method `on_fold_pressed()`:
+     - Emit signal to PokerEngine
+     - Disable controls immediately
+   - Method `on_check_call_pressed()`:
+     - Emit signal to PokerEngine with action type
+     - Disable controls
+   - Method `on_raise_pressed()`:
+     - Emit signal to PokerEngine with raise amount from slider
+     - Disable controls
    - Method `show_winner(winner_name: String, hand_description: String)`
    - Method `hide_winner_overlay()`
-   - Connect button signals to PokerEngine actions
-   - Connect slider value_changed to update raise amount display
+   - Connect button signals to handler methods
+   - Connect slider value_changed to `update_bet_slider_value()`
 
 8. **Turn Indicator Integration:**
    - When player turn starts:
@@ -605,12 +656,23 @@ GameView (Control)
 **Testing Checklist:**
 - [ ] Board takes 75% width, chat 25%
 - [ ] Betting controls appear when player turn starts
+- [ ] Fold button always enabled during player turn
+- [ ] Check/Call button displays correct text ("CHECK" vs "CALL $XX")
+- [ ] Check/Call button shows "ALL-IN" notation when applicable
+- [ ] Raise button changes text based on context (BET/RAISE/ALL-IN)
 - [ ] Slider range updates correctly based on game state
-- [ ] Check/Call button text updates dynamically
+- [ ] Slider displays current value in RaiseAmountLabel
+- [ ] Slider minimum is legal minimum raise
+- [ ] Slider maximum is player's remaining stack
+- [ ] All betting controls disabled when not player's turn
+- [ ] Clicking Fold immediately ends hand
+- [ ] Clicking Check/Call performs correct action
+- [ ] Clicking Raise uses current slider value
 - [ ] Winner overlay displays correctly at showdown
 - [ ] Turn indicator glows around player hand
 - [ ] Chat messages sync with game events
 - [ ] All buttons trigger correct game actions
+- [ ] Betting controls handle all-in scenarios correctly
 
 ---
 

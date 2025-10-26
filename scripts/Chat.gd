@@ -5,10 +5,10 @@ extends Control
 # Handles asynchronous LLM responses with independent state tracking
 
 # UI References
-@onready var tab_container = $TabContainer
-@onready var chat_display = $TabContainer/Chat/VBoxContainer/ChatDisplay
-@onready var message_input = $TabContainer/Chat/VBoxContainer/MessageInput
-@onready var history_display = $TabContainer/History/HistoryDisplay
+@onready var tab_container = $MarginContainer/TabContainer
+@onready var chat_display = $MarginContainer/TabContainer/CHAT/VBoxContainer/ScrollContainer/ChatDisplay
+@onready var message_input = $MarginContainer/TabContainer/CHAT/VBoxContainer/InputContainer/MessageInput
+@onready var history_display = $MarginContainer/TabContainer/HISTORY/ScrollContainer/HistoryDisplay
 
 # State management
 var is_awaiting_response: bool = false

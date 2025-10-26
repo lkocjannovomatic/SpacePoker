@@ -1,4 +1,73 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" load_steps=13 format=3]
+
+[ext_resource type="FontFile" uid="uid://cstyi01rp6ehx" path="res://assets/fonts/Orbitron-Regular.ttf" id="1_orbitron"]
+[ext_resource type="FontFile" uid="uid://2ukdksyvr6x7" path="res://assets/fonts/RobotoMono-Regular.ttf" id="2_roboto"]
+[ext_resource type="Texture2D" uid="uid://8q5inquwwnsd" path="res://assets/ui/buttons/btn_console_normal.png" id="3_btn_normal"]
+[ext_resource type="Texture2D" uid="uid://e622b1gl6nlv" path="res://assets/ui/buttons/btn_console_hover.png" id="4_btn_hover"]
+[ext_resource type="Texture2D" uid="uid://fmgep3bge0t7" path="res://assets/ui/buttons/btn_console_pressed.png" id="5_btn_pressed"]
+[ext_resource type="Texture2D" uid="uid://cybhoqu5tgg70" path="res://assets/ui/buttons/btn_console_disabled.png" id="6_btn_disabled"]
+[ext_resource type="Texture2D" uid="uid://d1aio2xktfl8a" path="res://assets/ui/panels/panel_console.png" id="7_panel_console"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_btn_normal"]
+texture = ExtResource("3_btn_normal")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 10.0
+texture_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_btn_hover"]
+texture = ExtResource("4_btn_hover")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 10.0
+texture_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_btn_pressed"]
+texture = ExtResource("5_btn_pressed")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 10.0
+texture_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_btn_disabled"]
+texture = ExtResource("6_btn_disabled")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 10.0
+texture_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel"]
+texture = ExtResource("7_panel_console")
+texture_margin_left = 15.0
+texture_margin_top = 15.0
+texture_margin_right = 15.0
+texture_margin_bottom = 15.0
 
 [resource]
-default_font_size = 16
+default_font = ExtResource("2_roboto")
+default_font_size = 14
+Button/colors/font_color = Color(0, 1, 0.8, 1)
+Button/colors/font_disabled_color = Color(0.3, 0.3, 0.3, 1)
+Button/colors/font_hover_color = Color(0, 1, 1, 1)
+Button/colors/font_pressed_color = Color(0, 0.8, 0.6, 1)
+Button/fonts/font = ExtResource("2_roboto")
+Button/font_sizes/font_size = 14
+Button/styles/disabled = SubResource("StyleBoxTexture_btn_disabled")
+Button/styles/hover = SubResource("StyleBoxTexture_btn_hover")
+Button/styles/normal = SubResource("StyleBoxTexture_btn_normal")
+Button/styles/pressed = SubResource("StyleBoxTexture_btn_pressed")
+Label/colors/font_color = Color(0, 1, 0.8, 1)
+Label/fonts/font = ExtResource("2_roboto")
+Label/font_sizes/font_size = 14
+LineEdit/colors/font_color = Color(0, 1, 0.8, 1)
+LineEdit/colors/font_placeholder_color = Color(0, 0.6, 0.5, 0.6)
+LineEdit/fonts/font = ExtResource("2_roboto")
+LineEdit/font_sizes/font_size = 14
+Panel/styles/panel = SubResource("StyleBoxTexture_panel")
+RichTextLabel/colors/default_color = Color(0, 1, 0.8, 1)
+RichTextLabel/fonts/normal_font = ExtResource("2_roboto")
+RichTextLabel/font_sizes/normal_font_size = 14
+TabContainer/colors/font_selected_color = Color(0, 1, 1, 1)
+TabContainer/colors/font_unselected_color = Color(0, 0.6, 0.5, 1)
+TabContainer/fonts/font = ExtResource("2_roboto")
+TabContainer/font_sizes/font_size = 14
