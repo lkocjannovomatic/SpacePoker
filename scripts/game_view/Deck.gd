@@ -4,7 +4,7 @@ class_name Deck
 # Deck.gd - Manages a 52-card poker deck
 # Creates, shuffles, and deals cards for poker hands
 
-const CardDataClass = preload("res://scripts/CardData.gd")
+const CardDataClass = preload("res://scripts/game_view/CardData.gd")
 
 # Array of CardData resources
 var cards: Array = []

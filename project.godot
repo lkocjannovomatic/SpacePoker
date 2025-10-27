@@ -17,9 +17,15 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-LLMClient="*res://scripts/LLMClient.gd"
-GameManager="*res://scripts/GameManager.gd"
-GameState="*res://scripts/GameState.gd"
+LLMClient="*res://scripts/autoload/LLMClient.gd"
+GameManager="*res://scripts/autoload/GameManager.gd"
+GameState="*res://scripts/autoload/GameState.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
 
 [enabled_addons]
 

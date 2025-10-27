@@ -6,8 +6,8 @@ class_name PokerEngine
 # Separate from UI - emits signals that GameView can connect to
 
 # Preload dependencies
-const DeckClass = preload("res://scripts/Deck.gd")
-const HandEvaluatorClass = preload("res://scripts/HandEvaluator.gd")
+const DeckClass = preload("res://scripts/game_view/Deck.gd")
+const HandEvaluatorClass = preload("res://scripts/game_view/HandEvaluator.gd")
 
 # ============================================================================
 # SIGNALS

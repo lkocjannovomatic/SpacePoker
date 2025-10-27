@@ -5,8 +5,8 @@ extends Control
 # Manages match initialization and game flow
 
 # Preload classes
-const PokerEngineClass = preload("res://scripts/PokerEngine.gd")
-const NPC_AIClass = preload("res://scripts/NPC_AI.gd")
+const PokerEngineClass = preload("res://scripts/game_view/PokerEngine.gd")
+const NPC_AIClass = preload("res://scripts/game_view/NPC_AI.gd")
 
 # Child component references
 @onready var board = $HBoxContainer/BoardContainer/Board
@@ -28,6 +28,7 @@ var current_npc: Dictionary = {}
 
 # Constants
 const NPC_CHAT_DELAY = 0.3  # Delay before poker action after chat response
+const STARTING_CREDITS = 1000
 
 func _ready():
 	print("GameView: Initializing...")
@@ -84,8 +85,8 @@ func _initialize_match() -> void:
 	
 	# Create PokerEngine
 	poker_engine = PokerEngineClass.new(
-		GameManager.STARTING_CREDITS,
-		GameManager.STARTING_CREDITS,
+		STARTING_CREDITS,
+		STARTING_CREDITS,
 		false  # NPC is dealer first hand
 	)
 	

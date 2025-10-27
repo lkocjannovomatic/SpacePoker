@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://ct8jmq2h3vyhu"]
 
-[ext_resource type="Script" path="res://scripts/StartScreen.gd" id="1_startscreen"]
+[ext_resource type="Script" uid="uid://cal0hq1uqggp0" path="res://scripts/start_screen/StartScreen.gd" id="1_startscreen"]
 [ext_resource type="PackedScene" uid="uid://ckx7r1w5hdl7q" path="res://scenes/Dialog.tscn" id="2_dialog"]
 [ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="3_background"]
 [ext_resource type="FontFile" uid="uid://cstyi01rp6ehx" path="res://assets/fonts/Orbitron-Regular.ttf" id="4_orbitron"]
@@ -35,14 +35,14 @@ grow_vertical = 2
 theme_override_constants/separation = 20
 
 [node name="MarginTop" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 
 [node name="TitleLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 1, 1)
 theme_override_fonts/font = ExtResource("4_orbitron")
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 56
 text = "SPACEPOKER"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -50,13 +50,14 @@ vertical_alignment = 1
 [node name="SubtitleLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("4_orbitron")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 26
 text = "Select or Generate an Opponent"
 horizontal_alignment = 1
 
 [node name="MarginContainer" type="MarginContainer" parent="VBoxContainer"]
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_horizontal = 4
+size_flags_vertical = 6
 theme_override_constants/margin_left = 50
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 50

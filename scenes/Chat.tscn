@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://chat_scene_uid"]
 
-[ext_resource type="Script" path="res://scripts/Chat.gd" id="1_chat"]
+[ext_resource type="Script" path="res://scripts/game_view/Chat.gd" id="1_chat"]
 [ext_resource type="Texture2D" uid="uid://b1aq5liqv6pd6" path="res://assets/ui/panels/panel_crt.png" id="2_panel_crt"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_crt"]

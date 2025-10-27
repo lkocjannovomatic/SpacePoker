@@ -70,7 +70,6 @@ func _initialize_llm():
 	
 	# Connect signals for async handling
 	gdllama.generate_text_finished.connect(_on_text_generated)
-	gdllama.generate_text_updated.connect(_on_text_updated)
 	
 	# Load default model (NPC_GENERATION)
 	_load_model(ModelConfig.NPC_GENERATION)
@@ -149,30 +148,20 @@ func send_prompt(prompt: String, json_schema: String = "", model_config: ModelCo
 	return true
 
 func _on_text_generated(generated_text: String):
-	"""Handle the completed text generation."""
 	print("LLMClient: Text generation completed")
 	is_llm_processing = false
 	response_received.emit(generated_text)
 
-func _on_text_updated(_new_text: String):
-	"""Handle streaming text updates (optional for this prototype)."""
-	# For the prototype, we'll just wait for the complete response
-	# This could be used for real-time streaming in the future
-	pass
-
 func stop_generation():
-	"""Stop the current text generation if running."""
 	if gdllama and is_llm_processing:
 		gdllama.stop_generate_text()
 		is_llm_processing = false
 		print("LLMClient: Text generation stopped")
 
 func is_ready() -> bool:
-	"""Check if the LLM client is ready to accept requests."""
 	return gdllama != null and not is_llm_processing
 
 func get_status() -> String:
-	"""Get the current status of the LLM client."""
 	if not gdllama:
 		return "Not initialized"
 	elif is_llm_processing:
@@ -181,11 +170,9 @@ func get_status() -> String:
 		return "Ready (" + MODEL_CONFIGS[current_model]["description"] + ")"
 
 func get_current_model() -> ModelConfig:
-	"""Get the currently loaded model configuration."""
 	return current_model
 
 func get_model_info(model_config: ModelConfig) -> Dictionary:
-	"""Get information about a specific model configuration."""
 	return MODEL_CONFIGS[model_config]
 
 # Clean up resources when the node is freed

@@ -4,7 +4,7 @@ class_name HandEvaluator
 # HandEvaluator.gd - Static utility for poker hand evaluation
 # Evaluates poker hands and compares them according to Texas Hold'em rules
 
-const CardDataClass = preload("res://scripts/CardData.gd")
+const CardDataClass = preload("res://scripts/game_view/CardData.gd")
 
 # Hand rank enumeration (ordered from worst to best)
 enum HandRank {

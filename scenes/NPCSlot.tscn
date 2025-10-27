@@ -1,40 +1,83 @@
-[gd_scene load_steps=5 format=3 uid="uid://bwpg8xh4k5n3k"]
+[gd_scene load_steps=12 format=3 uid="uid://bwpg8xh4k5n3k"]
 
-[ext_resource type="Script" path="res://scripts/NPCSlot.gd" id="1_npcslot"]
+[ext_resource type="Script" uid="uid://hkbv5nxkunbq" path="res://scripts/start_screen/NPCSlot.gd" id="1_npcslot"]
 [ext_resource type="Texture2D" uid="uid://cc5vhbxngot0k" path="res://assets/ui/spinner.png" id="2_spinner"]
 
-[sub_resource type="Animation" id="Animation_spinner"]
-resource_name = "spin"
-length = 2.0
-loop_mode = 1
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("VBoxContainer/SpinnerTexture:rotation")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 2),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0.0, 6.28319]
-}
+[sub_resource type="AtlasTexture" id="AtlasTexture_ql68t"]
+atlas = ExtResource("2_spinner")
+region = Rect2(0, 0, 64, 64)
 
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
-_data = {
-"spin": SubResource("Animation_spinner")
-}
+[sub_resource type="AtlasTexture" id="AtlasTexture_wvr2f"]
+atlas = ExtResource("2_spinner")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wjr84"]
+atlas = ExtResource("2_spinner")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7oldn"]
+atlas = ExtResource("2_spinner")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xbq3i"]
+atlas = ExtResource("2_spinner")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dgbxi"]
+atlas = ExtResource("2_spinner")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_geblp"]
+atlas = ExtResource("2_spinner")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lcm61"]
+atlas = ExtResource("2_spinner")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ap78x"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ql68t")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wvr2f")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wjr84")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7oldn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xbq3i")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dgbxi")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_geblp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lcm61")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
 
 [node name="NPCSlot" type="PanelContainer"]
 custom_minimum_size = Vector2(200, 150)
 script = ExtResource("1_npcslot")
 
 [node name="EmptyStateContainer" type="CenterContainer" parent="."]
+visible = false
 layout_mode = 2
 
 [node name="GenerateButton" type="Button" parent="EmptyStateContainer"]
 layout_mode = 2
-text = "Generate NPC"
+text = "GENERATE NPC"
 
 [node name="GeneratingStateContainer" type="CenterContainer" parent="."]
 visible = false
@@ -49,32 +92,28 @@ layout_mode = 2
 text = "Generating..."
 horizontal_alignment = 1
 
-[node name="SpinnerTexture" type="TextureRect" parent="GeneratingStateContainer/VBoxContainer"]
-custom_minimum_size = Vector2(48, 48)
+[node name="SpinnerControl" type="Control" parent="GeneratingStateContainer/VBoxContainer"]
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
-size_flags_horizontal = 4
-texture = ExtResource("2_spinner")
-expand_mode = 1
-stretch_mode = 5
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="GeneratingStateContainer"]
-autoplay = "spin"
-libraries = {
-"": SubResource("AnimationLibrary_1")
-}
+[node name="Spinner" type="AnimatedSprite2D" parent="GeneratingStateContainer/VBoxContainer/SpinnerControl"]
+position = Vector2(54, 26)
+sprite_frames = SubResource("SpriteFrames_ap78x")
+autoplay = "default"
 
 [node name="OccupiedStateContainer" type="CenterContainer" parent="."]
-visible = false
 layout_mode = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="OccupiedStateContainer"]
 layout_mode = 2
 
 [node name="NPCNameLabel" type="Label" parent="OccupiedStateContainer/VBoxContainer"]
+custom_minimum_size = Vector2(200, 20)
 layout_mode = 2
 text = "NPC Name"
 horizontal_alignment = 1
 vertical_alignment = 1
+autowrap_mode = 3
 
 [node name="ButtonsContainer" type="HBoxContainer" parent="OccupiedStateContainer/VBoxContainer"]
 layout_mode = 2

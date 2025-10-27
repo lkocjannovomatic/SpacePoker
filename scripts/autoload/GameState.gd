@@ -59,7 +59,6 @@ func _ready():
 # ============================================================================
 
 func set_state(new_state: State) -> void:
-	"""Change the game state and emit signal."""
 	if current_state == new_state:
 		return
 	
@@ -70,26 +69,19 @@ func set_state(new_state: State) -> void:
 	state_changed.emit(new_state)
 
 func get_state() -> State:
-	"""Get the current game state."""
 	return current_state
 
 func is_player_turn() -> bool:
-	"""Check if it's currently the player's turn."""
 	return current_state == State.PLAYER_TURN
 
 func is_npc_turn() -> bool:
-	"""Check if it's currently the NPC's turn."""
 	return current_state == State.NPC_TURN
 
 # ============================================================================
 # MATCH INITIALIZATION
 # ============================================================================
 
-func start_new_match(starting_credits: int = 1000) -> void:
-	"""
-	Initialize a new match with fresh stacks.
-	Called by GameView when a match begins.
-	"""
+func start_new_match(starting_credits: int) -> void:
 	print("GameState: Starting new match with ", starting_credits, " credits each")
 	
 	player_stack = starting_credits
@@ -135,10 +127,10 @@ func start_new_hand() -> void:
 	
 	set_state(State.HAND_START)
 	
-	# Post blinds (placeholder - will be handled by PokerEngine)
+	# Post blinds
 	_post_blinds()
 	
-	# Deal cards (placeholder - will be handled by PokerEngine)
+	# Deal cards
 	_deal_hole_cards()
 	
 	# Start with player's turn (for MVP simplicity)

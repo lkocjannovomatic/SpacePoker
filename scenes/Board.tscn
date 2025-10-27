@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://board_scene_uid"]
 
-[ext_resource type="Script" path="res://scripts/Board.gd" id="1_board"]
+[ext_resource type="Script" path="res://scripts/game_view/Board.gd" id="1_board"]
 [ext_resource type="Texture2D" uid="uid://ynfh8w2mmi1n" path="res://assets/backgrounds/table_holographic.png" id="2_table"]
 [ext_resource type="Texture2D" uid="uid://ccxrh7nqwwf2x" path="res://assets/ui/card_slot_empty.png" id="3_card_slot"]
 [ext_resource type="PackedScene" uid="uid://card_scene" path="res://scenes/Card.tscn" id="4_card"]

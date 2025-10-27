@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3 uid="uid://c5qp7nhgx8w4b"]
 
-[ext_resource type="Script" path="res://scripts/StatisticsScreen.gd" id="1_statistics"]
+[ext_resource type="Script" path="res://scripts/start_screen/StatisticsScreen.gd" id="1_statistics"]
 [ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="2_background"]
 [ext_resource type="FontFile" uid="uid://cstyi01rp6ehx" path="res://assets/fonts/Orbitron-Regular.ttf" id="3_orbitron"]
 [ext_resource type="Texture2D" uid="uid://2bvtflvu7fid" path="res://assets/ui/panels/panel_terminal.png" id="4_panel_terminal"]

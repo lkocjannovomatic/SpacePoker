@@ -6,7 +6,7 @@ class_name NPC_AI
 # Separate from LLM (which only handles chat, not strategy)
 
 # Preload HandEvaluator for hand strength calculations
-const HandEvaluatorClass = preload("res://scripts/HandEvaluator.gd")
+const HandEvaluatorClass = preload("res://scripts/game_view/HandEvaluator.gd")
 
 # ============================================================================
 # SIGNALS

@@ -11,7 +11,6 @@ func _ready():
 	_display_statistics()
 
 func _display_statistics():
-	"""Display global and per-NPC statistics."""
 	# Display global stats
 	var total_wins = GameManager.player_stats.get("total_wins", 0)
 	var total_losses = GameManager.player_stats.get("total_losses", 0)
