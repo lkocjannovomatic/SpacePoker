@@ -20,17 +20,26 @@ var game_phase_label = null  # Not in current Board.tscn structure
 @onready var npc_card_2 = $NPCHand/Card2
 @onready var community_cards_container = $CommunityCards
 
-# UI References - Betting Controls (these are in GameView.tscn, not Board.tscn)
-var fold_button = null
-var check_call_button = null
-var raise_button = null
-var bet_slider = null
+# UI References - Betting Controls (now in Board.tscn)
+@onready var betting_controls = $BettingControls
+@onready var fold_button = $BettingControls/VBoxContainer/ButtonsRow/FoldButton
+@onready var check_call_button = $BettingControls/VBoxContainer/ButtonsRow/CheckCallButton
+@onready var raise_button = $BettingControls/VBoxContainer/ButtonsRow/RaiseButton
+@onready var bet_slider = $BettingControls/VBoxContainer/SliderContainer/BetSlider
+@onready var amount_label = $BettingControls/VBoxContainer/SliderContainer/AmountLabel
 
 func _ready():
 	print("Board: Initializing...")
 	
-	# Betting controls are in GameView, will be set via init_betting_controls()
-	# Don't connect them here
+	# Connect betting control signals
+	if fold_button:
+		fold_button.pressed.connect(_on_fold_pressed)
+	if check_call_button:
+		check_call_button.pressed.connect(_on_check_call_pressed)
+	if raise_button:
+		raise_button.pressed.connect(_on_raise_pressed)
+	if bet_slider:
+		bet_slider.value_changed.connect(_on_bet_slider_value_changed)
 
 # ============================================================================
 # INITIALIZATION
@@ -48,29 +57,24 @@ func init() -> void:
 	npc_stack_label.text = "1000"
 	pot_label.text = "POT: 0"
 	
-	# Disable controls initially
-	_set_betting_controls_enabled(false)
-
-func init_betting_controls(fold_btn, check_call_btn, raise_btn, slider) -> void:
-	"""Initialize betting control references from GameView."""
-	fold_button = fold_btn
-	check_call_button = check_call_btn
-	raise_button = raise_btn
-	bet_slider = slider
-	
-	# Connect signals
-	if fold_button:
-		fold_button.pressed.connect(_on_fold_pressed)
-	if check_call_button:
-		check_call_button.pressed.connect(_on_check_call_pressed)
-	if raise_button:
-		raise_button.pressed.connect(_on_raise_pressed)
-	
-	_set_betting_controls_enabled(false)
+	# Disable controls initially and hide them
+	set_betting_controls_enabled(false)
+	if betting_controls:
+		betting_controls.visible = false
 
 # ============================================================================
 # PUBLIC INTERFACE (Called by GameView)
 # ============================================================================
+
+func show_betting_controls() -> void:
+	"""Show the betting controls panel."""
+	if betting_controls:
+		betting_controls.visible = true
+
+func hide_betting_controls() -> void:
+	"""Hide the betting controls panel."""
+	if betting_controls:
+		betting_controls.visible = false
 
 func update_controls(valid_actions: Dictionary) -> void:
 	"""
@@ -79,7 +83,7 @@ func update_controls(valid_actions: Dictionary) -> void:
 	if not check_call_button or not raise_button or not bet_slider:
 		return
 	
-	_set_betting_controls_enabled(true)
+	set_betting_controls_enabled(true)
 	
 	# Update check/call button
 	if valid_actions.get("can_check", false):
@@ -114,16 +118,43 @@ func display_community_cards(cards: Array) -> void:
 	"""Display community cards."""
 	print("Board: Displaying ", cards.size(), " community cards")
 	
-	# Clear existing community cards
-	for child in community_cards_container.get_children():
-		child.queue_free()
+	# Get the card slot positions from the scene
+	var card_slots = community_cards_container.get_children()
 	
-	# Display new cards
-	for card in cards:
-		var card_label = Label.new()
-		card_label.text = card.to_short_string() if card.has_method("to_short_string") else str(card)
-		card_label.add_theme_font_size_override("font_size", 16)
-		community_cards_container.add_child(card_label)
+	# Load Card scene for instantiation
+	var card_scene = preload("res://scenes/Card.tscn")
+	
+	# Display cards in the slots
+	for i in range(cards.size()):
+		if i >= card_slots.size():
+			break
+		
+		var card_data = cards[i]
+		if not card_data is CardData:
+			continue
+		
+		# Check if there's already a Card instance in this slot
+		var existing_card = null
+		for child in card_slots[i].get_children():
+			if child.has_method("set_card"):
+				existing_card = child
+				break
+		
+		# Create or reuse card instance
+		var card_instance = null
+		if existing_card:
+			card_instance = existing_card
+		else:
+			card_instance = card_scene.instantiate()
+			card_slots[i].add_child(card_instance)
+			# Position card to fill the slot
+			card_instance.position = Vector2(0, 0)
+		
+		# Set card data and show
+		var suit_str = _get_suit_string(card_data.suit)
+		var rank_str = _get_rank_string(card_data.rank)
+		card_instance.set_card(suit_str, rank_str)
+		card_instance.show_face()
 
 func display_player_cards(cards: Array) -> void:
 	"""Display player's hole cards."""
@@ -182,7 +213,7 @@ func display_showdown(_player_hand: Array, npc_hand: Array, _result: Dictionary)
 # BETTING CONTROLS
 # ============================================================================
 
-func _set_betting_controls_enabled(enabled: bool) -> void:
+func set_betting_controls_enabled(enabled: bool) -> void:
 	"""Enable or disable all betting controls."""
 	if fold_button:
 		fold_button.disabled = not enabled
@@ -196,12 +227,16 @@ func _set_betting_controls_enabled(enabled: bool) -> void:
 func _on_fold_pressed() -> void:
 	"""Handle fold button press."""
 	print("Board: Player clicked Fold")
+	AudioManager.play_button_click()
+	AudioManager.play_fold()
 	player_action_taken.emit("fold", 0)
 
 func _on_check_call_pressed() -> void:
 	"""Handle check/call button press."""
 	if not check_call_button:
 		return
+	
+	AudioManager.play_button_click()
 	
 	# Determine action based on button text
 	if check_call_button.text.begins_with("CHECK"):
@@ -212,6 +247,7 @@ func _on_check_call_pressed() -> void:
 		var amount_text = check_call_button.text.replace("CALL (", "").replace(")", "")
 		var call_amount = int(amount_text)
 		print("Board: Player clicked Call (", call_amount, ")")
+		AudioManager.play_chips_bet()
 		player_action_taken.emit("call", call_amount)
 
 func _on_raise_pressed() -> void:
@@ -221,7 +257,14 @@ func _on_raise_pressed() -> void:
 	
 	var raise_amount = int(bet_slider.value)
 	print("Board: Player clicked Raise to ", raise_amount)
+	AudioManager.play_button_click()
+	AudioManager.play_chips_bet()
 	player_action_taken.emit("raise", raise_amount)
+
+func _on_bet_slider_value_changed(value: float) -> void:
+	"""Update the amount label when slider value changes."""
+	if amount_label:
+		amount_label.text = "Raise Amount: " + str(int(value))
 
 # ============================================================================
 # UI HELPERS (Removed GameState-dependent functions)
@@ -238,14 +281,18 @@ func _clear_cards() -> void:
 	if npc_card_2:
 		npc_card_2.show_back()
 	
-	for child in community_cards_container.get_children():
-		child.queue_free()
+	# Clear community cards (remove Card instances from slots, not the slots themselves)
+	var card_slots = community_cards_container.get_children()
+	for slot in card_slots:
+		for child in slot.get_children():
+			if child.has_method("set_card"):
+				child.queue_free()
 
 func reset() -> void:
 	"""Reset board state (for cleanup when leaving match)."""
 	print("Board: Resetting state")
 	_clear_cards()
-	_set_betting_controls_enabled(false)
+	set_betting_controls_enabled(false)
 	player_stack_label.text = "1000"
 	npc_stack_label.text = "1000"
 	pot_label.text = "POT: 0"

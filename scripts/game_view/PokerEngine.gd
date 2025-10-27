@@ -321,8 +321,12 @@ func _handle_check(is_player: bool) -> void:
 	else:
 		npc_has_acted = true
 	
-	# Check if both players have acted
+	# Check if both players have acted, or if someone is all-in
 	if _both_players_acted():
+		_complete_betting_round()
+	elif player_stack == 0 or npc_stack == 0:
+		# Someone is all-in and can't act further - complete round
+		print("PokerEngine: All-in detected, completing betting round")
 		_complete_betting_round()
 	else:
 		# Pass to other player
@@ -343,6 +347,10 @@ func _handle_call(is_player: bool) -> void:
 		player_has_acted = true
 		
 		print("PokerEngine: Player calls ", amount_to_call)
+		
+		# Check if player is all-in
+		if player_stack == 0:
+			print("PokerEngine: Player is all-in!")
 	else:
 		var amount_to_call = current_bet - npc_bet_this_round
 		amount_to_call = min(amount_to_call, npc_stack)
@@ -353,11 +361,27 @@ func _handle_call(is_player: bool) -> void:
 		npc_has_acted = true
 		
 		print("PokerEngine: NPC calls ", amount_to_call)
+		
+		# Check if NPC is all-in
+		if npc_stack == 0:
+			print("PokerEngine: NPC is all-in!")
 	
 	pot_updated.emit(pot)
 	
-	# After a call, betting round is complete
-	_complete_betting_round()
+	# Check if round should complete
+	# Round completes if: both acted AND (bets match OR someone is all-in)
+	if _both_players_acted():
+		_complete_betting_round()
+	elif player_stack == 0 or npc_stack == 0:
+		# Someone is all-in and can't act further - complete round
+		print("PokerEngine: All-in detected, completing betting round")
+		_complete_betting_round()
+	else:
+		# Pass to other player for their option
+		if is_player:
+			_trigger_npc_turn()
+		else:
+			_trigger_player_turn()
 
 func _handle_raise(is_player: bool, total_bet: int) -> void:
 	"""Handle a raise/bet action."""
@@ -376,6 +400,13 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		
 		print("PokerEngine: Player raises to ", player_bet_this_round, " (additional: ", additional, ")")
 		
+		# Check if player is all-in
+		if player_stack == 0:
+			print("PokerEngine: Player is all-in!")
+			# If player is all-in, NPC doesn't need to respond unless they can overcall
+			# Since player is all-in, they can't act further
+			# NPC should still get a turn to call/fold
+		
 		# Pass to NPC
 		pot_updated.emit(pot)
 		_trigger_npc_turn()
@@ -393,6 +424,10 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		player_has_acted = false
 		
 		print("PokerEngine: NPC raises to ", npc_bet_this_round, " (additional: ", additional, ")")
+		
+		# Check if NPC is all-in
+		if npc_stack == 0:
+			print("PokerEngine: NPC is all-in!")
 		
 		# Pass to player
 		pot_updated.emit(pot)

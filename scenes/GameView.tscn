@@ -46,57 +46,6 @@ theme_override_constants/margin_bottom = 10
 [node name="Board" parent="HBoxContainer/BoardContainer" instance=ExtResource("2_board")]
 layout_mode = 2
 
-[node name="BettingControls" type="PanelContainer" parent="HBoxContainer/BoardContainer"]
-visible = false
-layout_mode = 2
-offset_left = 10.0
-offset_top = 400.0
-offset_right = 310.0
-offset_bottom = 550.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Label" type="Label" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
-layout_mode = 2
-text = "YOUR TURN"
-horizontal_alignment = 1
-
-[node name="ButtonsRow" type="HBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
-layout_mode = 2
-alignment = 1
-
-[node name="FoldButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-text = "FOLD"
-
-[node name="CheckCallButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-text = "CHECK"
-
-[node name="RaiseButton" type="Button" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-text = "RAISE"
-
-[node name="SliderContainer" type="VBoxContainer" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer"]
-layout_mode = 2
-
-[node name="AmountLabel" type="Label" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer"]
-layout_mode = 2
-text = "Raise Amount: 20"
-horizontal_alignment = 1
-
-[node name="BetSlider" type="HSlider" parent="HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer"]
-layout_mode = 2
-min_value = 20.0
-max_value = 1000.0
-step = 10.0
-value = 20.0
-
 [node name="ChatSidebar" type="MarginContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3

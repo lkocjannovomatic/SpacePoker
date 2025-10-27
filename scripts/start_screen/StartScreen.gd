@@ -54,6 +54,10 @@ func _on_npc_data_changed():
 
 func _on_generate_requested(slot_index: int):
 	print("StartScreen: Generate requested for slot ", slot_index)
+	
+	# Play NPC generation sound
+	AudioManager.play_npc_generate()
+	
 	GameManager.generate_npc(slot_index)
 	
 	# Set the specific slot to generating state
@@ -79,6 +83,10 @@ func _on_delete_requested(slot_index: int):
 func _on_dialog_confirmed(_data: Variant):
 	if pending_delete_index >= 0:
 		print("StartScreen: Confirmed deletion of slot ", pending_delete_index)
+		
+		# Play NPC deletion sound
+		AudioManager.play_npc_delete()
+		
 		GameManager.delete_npc(pending_delete_index)
 		pending_delete_index = -1
 

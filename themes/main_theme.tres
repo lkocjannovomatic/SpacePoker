@@ -6,6 +6,8 @@
 [ext_resource type="Texture2D" uid="uid://fmgep3bge0t7" path="res://assets/ui/buttons/btn_console_pressed.png" id="5_btn_pressed"]
 [ext_resource type="Texture2D" uid="uid://cybhoqu5tgg70" path="res://assets/ui/buttons/btn_console_disabled.png" id="6_btn_disabled"]
 [ext_resource type="Texture2D" uid="uid://d1aio2xktfl8a" path="res://assets/ui/panels/panel_console.png" id="7_panel_console"]
+[ext_resource type="Texture2D" path="res://assets/ui/slider/slider_track.png" id="8_slider_track"]
+[ext_resource type="Texture2D" path="res://assets/ui/slider/slider_grabber.png" id="9_slider_grabber"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_btn_disabled"]
 content_margin_left = 30.0
@@ -50,6 +52,13 @@ texture_margin_top = 15.0
 texture_margin_right = 15.0
 texture_margin_bottom = 15.0
 
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_slider"]
+texture = ExtResource("8_slider_track")
+texture_margin_left = 10.0
+texture_margin_top = 5.0
+texture_margin_right = 10.0
+texture_margin_bottom = 5.0
+
 [resource]
 default_font = ExtResource("2_roboto")
 default_font_size = 14
@@ -78,3 +87,6 @@ TabContainer/colors/font_selected_color = Color(0, 1, 1, 1)
 TabContainer/colors/font_unselected_color = Color(0, 0.6, 0.5, 1)
 TabContainer/font_sizes/font_size = 14
 TabContainer/fonts/font = ExtResource("2_roboto")
+HSlider/icons/grabber = ExtResource("9_slider_grabber")
+HSlider/icons/grabber_highlight = ExtResource("9_slider_grabber")
+HSlider/styles/slider = SubResource("StyleBoxTexture_slider")

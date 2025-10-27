@@ -12,13 +12,6 @@ const NPC_AIClass = preload("res://scripts/game_view/NPC_AI.gd")
 @onready var board = $HBoxContainer/BoardContainer/Board
 @onready var chat = $HBoxContainer/ChatSidebar/Chat
 
-# Betting controls (in GameView, not Board)
-@onready var betting_controls = $HBoxContainer/BoardContainer/BettingControls
-@onready var fold_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/FoldButton
-@onready var check_call_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/CheckCallButton
-@onready var raise_button = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/ButtonsRow/RaiseButton
-@onready var bet_slider = $HBoxContainer/BoardContainer/BettingControls/VBoxContainer/SliderContainer/BetSlider
-
 # Poker components
 var poker_engine: PokerEngineClass = null
 var npc_ai: NPC_AIClass = null
@@ -51,6 +44,9 @@ func _initialize_match() -> void:
 	"""
 	print("GameView: Initializing match")
 	
+	# Set GameState to IN_MATCH
+	GameState.set_state(GameState.State.IN_MATCH)
+	
 	# Get current NPC data from GameManager
 	if GameManager.current_npc_index < 0:
 		print("GameView Error: No NPC selected")
@@ -69,8 +65,6 @@ func _initialize_match() -> void:
 	# Initialize Board
 	if board:
 		board.init()
-		# Initialize betting controls from GameView
-		board.init_betting_controls(fold_button, check_call_button, raise_button, bet_slider)
 	
 	# Initialize Chat with NPC data
 	if chat:
@@ -114,6 +108,9 @@ func _initialize_match() -> void:
 	
 	# Connect NPC AI signals
 	npc_ai.action_chosen.connect(_on_npc_action_chosen)
+	
+	# Start background music
+	AudioManager.play_background_music()
 	
 	# Start first hand
 	poker_engine.start_new_hand()
@@ -202,6 +199,10 @@ func _on_player_action_taken(action: String, amount: int) -> void:
 	"""
 	print("GameView: Player action - ", action, " (", amount, ")")
 	
+	# Disable controls immediately to prevent double-clicks
+	if board:
+		board.set_betting_controls_enabled(false)
+	
 	if poker_engine:
 		poker_engine.submit_action(true, action, amount)
 
@@ -226,12 +227,27 @@ func _on_player_turn(valid_actions: Dictionary) -> void:
 	"""Handle player turn from PokerEngine."""
 	print("GameView: Player's turn")
 	
+	# Play turn notification sound
+	AudioManager.play_turn_notify()
+	
+	# Update GameState for UI components (like Chat)
+	GameState.set_state(GameState.State.PLAYER_TURN)
+	
+	# Show betting controls and update them
 	if board:
+		board.show_betting_controls()
 		board.update_controls(valid_actions)
 
 func _on_npc_turn(decision_context: Dictionary) -> void:
 	"""Handle NPC turn from PokerEngine."""
 	print("GameView: NPC's turn - delegating to NPC_AI")
+	
+	# Update GameState for UI components (like Chat)
+	GameState.set_state(GameState.State.NPC_TURN)
+	
+	# Hide betting controls during NPC's turn
+	if board:
+		board.hide_betting_controls()
 	
 	# Check if chat has pending response
 	if chat and chat.has_pending_response():
@@ -249,12 +265,18 @@ func _on_community_cards_dealt(phase: String, cards: Array) -> void:
 	"""Handle community cards being dealt."""
 	print("GameView: Community cards dealt - ", phase)
 	
+	# Play card deal sound
+	AudioManager.play_card_deal()
+	
 	if board:
 		board.display_community_cards(cards)
 
 func _on_player_cards_dealt(cards: Array) -> void:
 	"""Handle player cards being dealt."""
 	print("GameView: Player cards dealt")
+	
+	# Play card deal sound
+	AudioManager.play_card_deal()
 	
 	if board:
 		board.display_player_cards(cards)
@@ -263,12 +285,19 @@ func _on_showdown(player_hand: Array, npc_hand: Array, result: Dictionary) -> vo
 	"""Handle showdown."""
 	print("GameView: Showdown - ", result)
 	
+	# Play card flip sound for reveal
+	AudioManager.play_card_flip()
+	
 	if board:
 		board.display_showdown(player_hand, npc_hand, result)
 
 func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	"""Handle hand end."""
 	print("GameView: Hand ended - Winner: ", "Player" if winner_is_player else "NPC", " (pot: ", pot_amount, ")")
+	
+	# Play winner sound and chips collect sound
+	AudioManager.play_winner()
+	AudioManager.play_chips_collect()
 	
 	# Update stack displays
 	if board and poker_engine:
@@ -320,6 +349,9 @@ func _on_match_end(player_won: bool) -> void:
 func _exit_tree() -> void:
 	"""Clean up when leaving GameView."""
 	print("GameView: Cleaning up")
+	
+	# Reset GameState
+	GameState.reset()
 	
 	# Clean up PokerEngine
 	if poker_engine:
