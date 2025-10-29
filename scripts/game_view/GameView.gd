@@ -202,6 +202,21 @@ func _on_player_action_taken(action: String, amount: int) -> void:
 	# Disable controls immediately to prevent double-clicks
 	if board:
 		board.set_betting_controls_enabled(false)
+		
+		# Display player action briefly
+		var message = ""
+		match action:
+			"fold":
+				message = "You fold"
+			"check":
+				message = "You check"
+			"call":
+				message = "You call " + str(amount)
+			"raise":
+				message = "You raise to " + str(amount)
+		
+		if message != "":
+			board.show_action_message(message, 1.5)
 	
 	if poker_engine:
 		poker_engine.submit_action(true, action, amount)
@@ -270,6 +285,19 @@ func _on_community_cards_dealt(phase: String, cards: Array) -> void:
 	
 	if board:
 		board.display_community_cards(cards)
+		
+		# Show phase message
+		var message = ""
+		match phase:
+			"flop":
+				message = "FLOP"
+			"turn":
+				message = "TURN"
+			"river":
+				message = "RIVER"
+		
+		if message != "":
+			board.show_action_message(message, 1.5)
 
 func _on_player_cards_dealt(cards: Array) -> void:
 	"""Handle player cards being dealt."""
@@ -290,6 +318,23 @@ func _on_showdown(player_hand: Array, npc_hand: Array, result: Dictionary) -> vo
 	
 	if board:
 		board.display_showdown(player_hand, npc_hand, result)
+		
+		# Display showdown result message
+		var message = ""
+		if result.get("tied", false):
+			message = "TIE! Pot split\n"
+			message += "You: " + result.get("player_hand_description", "")
+			message += "\n" + current_npc.get("name", "NPC") + ": " + result.get("npc_hand_description", "")
+		elif result.get("player_won", false):
+			message = "YOU WIN!\n"
+			message += "Your " + result.get("player_hand_description", "") + " beats "
+			message += current_npc.get("name", "NPC") + "'s " + result.get("npc_hand_description", "")
+		else:
+			message = current_npc.get("name", "NPC") + " WINS!\n"
+			message += "Their " + result.get("npc_hand_description", "") + " beats "
+			message += "your " + result.get("player_hand_description", "")
+		
+		board.show_action_message(message, 0.0)  # Keep visible until next action
 
 func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	"""Handle hand end."""
@@ -298,6 +343,17 @@ func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	# Play winner sound and chips collect sound
 	AudioManager.play_winner()
 	AudioManager.play_chips_collect()
+	
+	# Display win message with pot amount (if not already shown in showdown)
+	if board:
+		# Only show fold-win message if the current message doesn't contain hand descriptions
+		# (showdown messages have hand descriptions, fold wins don't)
+		var current_msg = board.action_message_label.text if board.action_message_label else ""
+		if not current_msg.contains("beats") and not current_msg.contains("TIE"):
+			var winner_name = "You" if winner_is_player else current_npc.get("name", "NPC")
+			var message = winner_name + " win" + ("" if winner_is_player else "s") + " the pot!"
+			message += "\nPot: " + str(pot_amount)
+			board.show_action_message(message, 3.0)
 	
 	# Update stack displays
 	if board and poker_engine:
@@ -312,11 +368,35 @@ func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 		else:
 			# Start next hand after delay
 			await get_tree().create_timer(2.0).timeout
+			
+			# Clear cards from previous hand before starting new hand
+			if board:
+				board.prepare_for_new_hand()
+			
 			poker_engine.start_new_hand()
 
 func _on_npc_action_chosen(action: String, amount: int) -> void:
 	"""Handle NPC AI action choice."""
 	print("GameView: NPC chose action - ", action, " (", amount, ")")
+	
+	# Display NPC action on board
+	if board and current_npc:
+		var npc_name = current_npc.get("name", "NPC")
+		var message = ""
+		
+		match action:
+			"fold":
+				message = npc_name + " folds"
+			"check":
+				message = npc_name + " checks"
+			"call":
+				message = npc_name + " calls " + str(amount)
+			"raise", "bet":
+				message = npc_name + " raises to " + str(amount)
+			_:
+				message = npc_name + " - " + action
+		
+		board.show_action_message(message, 2.0)
 	
 	if poker_engine:
 		poker_engine.submit_action(false, action, amount)
@@ -331,6 +411,16 @@ func _on_match_end(player_won: bool) -> void:
 	Save chat history, record result, and return to start screen.
 	"""
 	print("GameView: Match ended - Player won: ", player_won)
+	
+	# Display match end message
+	if board:
+		var message = ""
+		if player_won:
+			message = "VICTORY!\n\nYou defeated " + current_npc.get("name", "NPC") + "!"
+		else:
+			message = "DEFEAT!\n\n" + current_npc.get("name", "NPC") + " wins the match!"
+		
+		board.show_action_message(message, 0.0)  # Keep visible
 	
 	# Record result in GameManager
 	GameManager.record_match_result(player_won)

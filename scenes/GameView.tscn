@@ -1,10 +1,9 @@
-[gd_scene load_steps=6 format=3 uid="uid://dmyk5h8rj3b7s"]
+[gd_scene load_steps=5 format=3 uid="uid://dmyk5h8rj3b7s"]
 
-[ext_resource type="Script" path="res://scripts/game_view/GameView.gd" id="1_gameview"]
-[ext_resource type="PackedScene" uid="uid://board_scene_uid" path="res://scenes/Board.tscn" id="2_board"]
-[ext_resource type="PackedScene" uid="uid://chat_scene_uid" path="res://scenes/Chat.tscn" id="3_chat"]
+[ext_resource type="Script" uid="uid://dbbrbo6fm7rj0" path="res://scripts/game_view/GameView.gd" id="1_gameview"]
+[ext_resource type="PackedScene" uid="uid://cudbrhawwpg5d" path="res://scenes/Board.tscn" id="2_board"]
+[ext_resource type="PackedScene" uid="uid://g7mxfxswc82t" path="res://scenes/Chat.tscn" id="3_chat"]
 [ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="4_background"]
-[ext_resource type="Texture2D" uid="uid://dt0inyw85e8dw" path="res://assets/ui/panels/panel_modal.png" id="5_panel_modal"]
 
 [node name="GameView" type="Control"]
 layout_mode = 3
@@ -33,6 +32,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 4
 
 [node name="BoardContainer" type="MarginContainer" parent="HBoxContainer"]
 layout_mode = 2
@@ -49,7 +49,6 @@ layout_mode = 2
 [node name="ChatSidebar" type="MarginContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
 theme_override_constants/margin_left = 5
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10

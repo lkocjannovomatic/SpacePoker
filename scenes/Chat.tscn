@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3 uid="uid://chat_scene_uid"]
+[gd_scene load_steps=4 format=3 uid="uid://g7mxfxswc82t"]
 
-[ext_resource type="Script" path="res://scripts/game_view/Chat.gd" id="1_chat"]
+[ext_resource type="Script" uid="uid://c7ayof28ahwvr" path="res://scripts/game_view/Chat.gd" id="1_chat"]
 [ext_resource type="Texture2D" uid="uid://b1aq5liqv6pd6" path="res://assets/ui/panels/panel_crt.png" id="2_panel_crt"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_crt"]
@@ -9,6 +9,10 @@ texture_margin_left = 15.0
 texture_margin_top = 15.0
 texture_margin_right = 15.0
 texture_margin_bottom = 15.0
+expand_margin_left = 129.0
+expand_margin_top = 185.0
+expand_margin_right = 92.0
+expand_margin_bottom = 190.0
 
 [node name="Chat" type="PanelContainer"]
 anchors_preset = 15
@@ -22,12 +26,14 @@ script = ExtResource("1_chat")
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
+theme_override_constants/margin_top = 60
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 60
 
 [node name="TabContainer" type="TabContainer" parent="MarginContainer"]
 layout_mode = 2
+theme_override_constants/side_margin = 8
+current_tab = 0
 
 [node name="CHAT" type="Control" parent="MarginContainer/TabContainer"]
 layout_mode = 2

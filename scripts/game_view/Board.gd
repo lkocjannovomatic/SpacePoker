@@ -11,6 +11,8 @@ signal player_action_taken(action: String, amount: int)
 @onready var player_stack_label = $PlayerStackPanel/VBoxContainer/StackLabel
 @onready var npc_stack_label = $NPCStackPanel/VBoxContainer/StackLabel
 @onready var pot_label = $PotPanel/PotLabel
+@onready var action_message_panel = $ActionMessagePanel
+@onready var action_message_label = $ActionMessagePanel/ActionMessageLabel
 var game_phase_label = null  # Not in current Board.tscn structure
 
 # UI References - Card Display
@@ -52,10 +54,16 @@ func init() -> void:
 	# Clear card displays
 	_clear_cards()
 	
+	# Initialize community card slots with card backs
+	_initialize_community_card_backs()
+	
 	# Reset labels
 	player_stack_label.text = "1000"
 	npc_stack_label.text = "1000"
 	pot_label.text = "POT: 0"
+	
+	# Hide action message
+	hide_action_message()
 	
 	# Disable controls initially and hide them
 	set_betting_controls_enabled(false)
@@ -113,6 +121,30 @@ func update_stack_labels(player_stack_val: int, npc_stack_val: int) -> void:
 	"""Update player and NPC stack displays."""
 	player_stack_label.text = str(player_stack_val)
 	npc_stack_label.text = str(npc_stack_val)
+
+func show_action_message(message: String, duration: float = 0.0) -> void:
+	"""
+	Display an action message on the board.
+	If duration > 0, the message will auto-hide after that many seconds.
+	If duration = 0, the message stays until manually cleared.
+	"""
+	if action_message_label:
+		action_message_label.text = message
+	
+	if action_message_panel:
+		action_message_panel.visible = true
+	
+	# Auto-hide after duration if specified
+	if duration > 0.0:
+		await get_tree().create_timer(duration).timeout
+		hide_action_message()
+
+func hide_action_message() -> void:
+	"""Hide the action message panel."""
+	if action_message_panel:
+		action_message_panel.visible = false
+	if action_message_label:
+		action_message_label.text = ""
 
 func display_community_cards(cards: Array) -> void:
 	"""Display community cards."""
@@ -286,7 +318,22 @@ func _clear_cards() -> void:
 	for slot in card_slots:
 		for child in slot.get_children():
 			if child.has_method("set_card"):
-				child.queue_free()
+				# Use free() instead of queue_free() for immediate cleanup
+				child.free()
+
+func _initialize_community_card_backs() -> void:
+	"""Initialize community card slots with card backs at match start."""
+	var card_slots = community_cards_container.get_children()
+	var card_scene = preload("res://scenes/Card.tscn")
+	
+	# Create a Card instance showing the back in each slot
+	for slot in card_slots:
+		var card_instance = card_scene.instantiate()
+		slot.add_child(card_instance)
+		card_instance.position = Vector2(0, 0)
+		# Card shows back by default, so no need to call show_back()
+		# But we can explicitly call it for clarity
+		card_instance.show_back()
 
 func reset() -> void:
 	"""Reset board state (for cleanup when leaving match)."""
@@ -296,6 +343,18 @@ func reset() -> void:
 	player_stack_label.text = "1000"
 	npc_stack_label.text = "1000"
 	pot_label.text = "POT: 0"
+
+func prepare_for_new_hand() -> void:
+	"""Prepare board for a new hand within the same match."""
+	print("Board: Preparing for new hand")
+	_clear_cards()
+	_initialize_community_card_backs()
+	# Controls will be shown/hidden by GameView based on turn
+	set_betting_controls_enabled(false)
+	if betting_controls:
+		betting_controls.visible = false
+	# Hide previous hand's action messages
+	hide_action_message()
 
 # ============================================================================
 # CARDDATA CONVERSION HELPERS
