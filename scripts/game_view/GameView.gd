@@ -216,7 +216,7 @@ func _on_player_action_taken(action: String, amount: int) -> void:
 				message = "You raise to " + str(amount)
 		
 		if message != "":
-			board.show_action_message(message, 1.5)
+			board.show_action_message(message, 2.5)  # Increased from 1.5s
 	
 	if poker_engine:
 		poker_engine.submit_action(true, action, amount)
@@ -286,18 +286,9 @@ func _on_community_cards_dealt(phase: String, cards: Array) -> void:
 	if board:
 		board.display_community_cards(cards)
 		
-		# Show phase message
-		var message = ""
-		match phase:
-			"flop":
-				message = "FLOP"
-			"turn":
-				message = "TURN"
-			"river":
-				message = "RIVER"
-		
-		if message != "":
-			board.show_action_message(message, 1.5)
+		# Don't show phase messages - the visual appearance of new cards is sufficient
+		# This prevents interrupting action messages (like "NPC calls")
+		# Players can see the phase by counting the community cards
 
 func _on_player_cards_dealt(cards: Array) -> void:
 	"""Handle player cards being dealt."""
@@ -353,7 +344,7 @@ func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 			var winner_name = "You" if winner_is_player else current_npc.get("name", "NPC")
 			var message = winner_name + " win" + ("" if winner_is_player else "s") + " the pot!"
 			message += "\nPot: " + str(pot_amount)
-			board.show_action_message(message, 3.0)
+			board.show_action_message(message, 4.0)  # Increased from 3.0s
 	
 	# Update stack displays
 	if board and poker_engine:
@@ -396,7 +387,7 @@ func _on_npc_action_chosen(action: String, amount: int) -> void:
 			_:
 				message = npc_name + " - " + action
 		
-		board.show_action_message(message, 2.0)
+		board.show_action_message(message, 5.0)  # Increased from 3.0s - gives player time to read NPC action before acting
 	
 	if poker_engine:
 		poker_engine.submit_action(false, action, amount)

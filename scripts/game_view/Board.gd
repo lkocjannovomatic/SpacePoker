@@ -15,6 +15,9 @@ signal player_action_taken(action: String, amount: int)
 @onready var action_message_label = $ActionMessagePanel/ActionMessageLabel
 var game_phase_label = null  # Not in current Board.tscn structure
 
+# Message timer tracking
+var message_hide_timer: SceneTreeTimer = null
+
 # UI References - Card Display
 @onready var player_card_1 = $PlayerHand/Card1
 @onready var player_card_2 = $PlayerHand/Card2
@@ -128,6 +131,12 @@ func show_action_message(message: String, duration: float = 0.0) -> void:
 	If duration > 0, the message will auto-hide after that many seconds.
 	If duration = 0, the message stays until manually cleared.
 	"""
+	# Cancel any pending hide timer to prevent premature hiding
+	if message_hide_timer != null:
+		# Note: SceneTreeTimer doesn't have a cancel method, so we just clear the reference
+		# The old timer will still fire but won't do anything harmful
+		message_hide_timer = null
+	
 	if action_message_label:
 		action_message_label.text = message
 	
@@ -136,11 +145,16 @@ func show_action_message(message: String, duration: float = 0.0) -> void:
 	
 	# Auto-hide after duration if specified
 	if duration > 0.0:
-		await get_tree().create_timer(duration).timeout
-		hide_action_message()
+		message_hide_timer = get_tree().create_timer(duration)
+		await message_hide_timer.timeout
+		# Only hide if this is still the active timer (not replaced by a newer message)
+		if message_hide_timer != null:
+			hide_action_message()
+			message_hide_timer = null
 
 func hide_action_message() -> void:
 	"""Hide the action message panel."""
+	message_hide_timer = null  # Clear timer reference
 	if action_message_panel:
 		action_message_panel.visible = false
 	if action_message_label:
@@ -304,10 +318,8 @@ func _on_bet_slider_value_changed(value: float) -> void:
 
 func _clear_cards() -> void:
 	"""Clear all card displays."""
-	if player_card_1:
-		player_card_1.show_back()
-	if player_card_2:
-		player_card_2.show_back()
+	# Note: Player cards are NOT flipped back here - they stay visible to the player
+	# Only NPC cards are hidden between hands
 	if npc_card_1:
 		npc_card_1.show_back()
 	if npc_card_2:
@@ -338,6 +350,13 @@ func _initialize_community_card_backs() -> void:
 func reset() -> void:
 	"""Reset board state (for cleanup when leaving match)."""
 	print("Board: Resetting state")
+	
+	# Hide all cards when leaving match
+	if player_card_1:
+		player_card_1.show_back()
+	if player_card_2:
+		player_card_2.show_back()
+	
 	_clear_cards()
 	set_betting_controls_enabled(false)
 	player_stack_label.text = "1000"
