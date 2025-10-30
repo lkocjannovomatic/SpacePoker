@@ -289,6 +289,11 @@ func _on_community_cards_dealt(phase: String, cards: Array) -> void:
 		# Don't show phase messages - the visual appearance of new cards is sufficient
 		# This prevents interrupting action messages (like "NPC calls")
 		# Players can see the phase by counting the community cards
+	
+	# Resume engine after UI displays cards
+	await get_tree().create_timer(0.8).timeout
+	if poker_engine:
+		poker_engine.resume()
 
 func _on_player_cards_dealt(cards: Array) -> void:
 	"""Handle player cards being dealt."""
@@ -299,6 +304,11 @@ func _on_player_cards_dealt(cards: Array) -> void:
 	
 	if board:
 		board.display_player_cards(cards)
+	
+	# Resume engine after UI displays cards
+	await get_tree().create_timer(0.5).timeout
+	if poker_engine:
+		poker_engine.resume()
 
 func _on_showdown(player_hand: Array, npc_hand: Array, result: Dictionary) -> void:
 	"""Handle showdown."""
@@ -326,6 +336,11 @@ func _on_showdown(player_hand: Array, npc_hand: Array, result: Dictionary) -> vo
 			message += "your " + result.get("player_hand_description", "")
 		
 		board.show_action_message(message, 0.0)  # Keep visible until next action
+	
+	# Resume engine after UI displays showdown
+	await get_tree().create_timer(3.0).timeout
+	if poker_engine:
+		poker_engine.resume()
 
 func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	"""Handle hand end."""
@@ -335,18 +350,7 @@ func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	AudioManager.play_winner()
 	AudioManager.play_chips_collect()
 	
-	# Display win message with pot amount (if not already shown in showdown)
-	if board:
-		# Only show fold-win message if the current message doesn't contain hand descriptions
-		# (showdown messages have hand descriptions, fold wins don't)
-		var current_msg = board.action_message_label.text if board.action_message_label else ""
-		if not current_msg.contains("beats") and not current_msg.contains("TIE"):
-			var winner_name = "You" if winner_is_player else current_npc.get("name", "NPC")
-			var message = winner_name + " win" + ("" if winner_is_player else "s") + " the pot!"
-			message += "\nPot: " + str(pot_amount)
-			board.show_action_message(message, 4.0)  # Increased from 3.0s
-	
-	# Update stack displays
+	# Update stack displays immediately
 	if board and poker_engine:
 		board.update_stack_labels(poker_engine.get_player_stack(), poker_engine.get_npc_stack())
 	
@@ -354,17 +358,52 @@ func _on_hand_ended(winner_is_player: bool, pot_amount: int) -> void:
 	if poker_engine:
 		if poker_engine.get_player_stack() <= 0:
 			_on_match_end(false)
+			return
 		elif poker_engine.get_npc_stack() <= 0:
 			_on_match_end(true)
-		else:
-			# Start next hand after delay
-			await get_tree().create_timer(2.0).timeout
+			return
+	
+	# Match continues - schedule next hand with proper delays
+	# Note: We don't await here because signal handlers can't properly await
+	# The function will run asynchronously in the background
+	_schedule_next_hand(winner_is_player, pot_amount)
+
+func _schedule_next_hand(winner_is_player: bool, pot_amount: int) -> void:
+	"""
+	Schedule the next hand with proper delays for messages.
+	This is a separate function to ensure async/await works correctly.
+	"""
+	print("GameView: Scheduling next hand with delays...")
+	
+	# Display win message with pot amount (if not already shown in showdown)
+	if board:
+		# Only show fold-win message if the current message doesn't contain hand descriptions
+		# (showdown messages have hand descriptions, fold wins don't)
+		var current_msg = board.action_message_label.text if board.action_message_label else ""
+		if not current_msg.contains("beats") and not current_msg.contains("TIE"):
+			# Brief delay to let fold/action message be seen first
+			print("GameView: Waiting 1.5s before showing win message...")
+			await get_tree().create_timer(1.5).timeout
 			
-			# Clear cards from previous hand before starting new hand
-			if board:
-				board.prepare_for_new_hand()
-			
-			poker_engine.start_new_hand()
+			var winner_name = "You" if winner_is_player else current_npc.get("name", "NPC")
+			var message = winner_name + " win" + ("" if winner_is_player else "s") + " the pot!"
+			message += "\nPot: " + str(pot_amount)
+			board.show_action_message(message, 4.0)  # Show for 4 seconds
+			print("GameView: Win message displayed")
+	
+	# Wait before starting next hand
+	print("GameView: Waiting 2.5s before next hand...")
+	await get_tree().create_timer(2.5).timeout
+	
+	print("GameView: Delays complete, preparing for next hand")
+	
+	# Clear cards from previous hand before starting new hand
+	if board:
+		board.prepare_for_new_hand()
+	
+	# Start the next hand
+	if poker_engine:
+		poker_engine.start_new_hand()
 
 func _on_npc_action_chosen(action: String, amount: int) -> void:
 	"""Handle NPC AI action choice."""

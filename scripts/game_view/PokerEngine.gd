@@ -1,9 +1,21 @@
 extends RefCounted
 class_name PokerEngine
 
-# PokerEngine.gd - Non-visual core poker logic
-# Manages hand state, rules, and game flow via signals
-# Separate from UI - emits signals that GameView can connect to
+# PokerEngine.gd - Authoritative Poker State Machine
+# 
+# This class is the single source of truth for poker game logic.
+# It operates as a state machine that:
+# - Drives game progression through well-defined states
+# - Emits signals when UI action is required
+# - Pauses execution waiting for UI to complete
+# - Resumes when UI calls resume() method
+# 
+# The engine is completely UI-agnostic. All visual display and timing
+# is handled by GameView through a handshake protocol.
+#
+# State Flow:
+# PRE_HAND → DEALING → BETTING → AWAITING_INPUT (pause) → BETTING → ...
+# → EVALUATING → POST_HAND → PRE_HAND (next hand) or GAME_OVER
 
 # Preload dependencies
 const DeckClass = preload("res://scripts/game_view/Deck.gd")
@@ -26,6 +38,16 @@ signal hand_ended(winner_is_player: bool, pot_amount: int)
 # ENUMS
 # ============================================================================
 
+enum EngineState {
+	PRE_HAND,        # Check for match end, post blinds, prepare dealing
+	DEALING,         # Deal cards (hole cards, flop, turn, or river)
+	BETTING,         # Process betting round logic
+	AWAITING_INPUT,  # Paused, waiting for player/NPC action
+	EVALUATING,      # Showdown or fold - determine winner
+	POST_HAND,       # Award pot, clean up, prepare next hand
+	GAME_OVER        # Terminal state - match ended
+}
+
 enum HandPhase {
 	PRE_FLOP,
 	FLOP,
@@ -37,6 +59,10 @@ enum HandPhase {
 # ============================================================================
 # STATE PROPERTIES
 # ============================================================================
+
+# State machine control
+var current_state: EngineState = EngineState.PRE_HAND
+var is_paused: bool = false
 
 var deck: DeckClass = null
 var pot: int = 0
@@ -85,10 +111,14 @@ func _init(p_stack: int, n_stack: int, p_is_dealer: bool = false):
 
 func start_new_hand() -> void:
 	"""
-	Start a new hand - reset state, shuffle, deal cards, post blinds.
+	Start a new hand - initialize state machine.
 	This is the main entry point to begin a hand.
 	"""
 	print("PokerEngine: Starting new hand")
+	
+	# Reset state machine
+	current_state = EngineState.PRE_HAND
+	is_paused = false
 	
 	# Reset hand-specific state
 	pot = 0
@@ -106,21 +136,327 @@ func start_new_hand() -> void:
 	deck = DeckClass.new()
 	deck.reset_and_shuffle()
 	
-	# Deal hole cards
-	player_hand = deck.deal(2)
-	npc_hand = deck.deal(2)
+	# Start state machine
+	_advance_state_machine()
+
+# ============================================================================
+# STATE MACHINE CONTROL
+# ============================================================================
+
+func resume() -> void:
+	"""
+	Resume state machine execution after UI pause.
+	Called by GameView after UI animations/timing complete.
 	
-	print("PokerEngine: Dealt hole cards")
-	player_cards_dealt.emit(player_hand)
+	This is the core of the handshake protocol. The engine will pause
+	after emitting certain signals (like cards_dealt), and GameView must
+	call resume() after displaying the UI to continue the game flow.
+	"""
+	if not is_paused:
+		print("PokerEngine Warning: resume() called but not paused")
+		return
 	
-	# Post blinds (dealer posts small blind in heads-up)
+	print("PokerEngine: Resuming from pause")
+	is_paused = false
+	_advance_state_machine()
+
+func _pause_for_ui() -> void:
+	"""
+	Pause state machine to wait for UI.
+	State machine will not advance until resume() is called.
+	"""
+	print("PokerEngine: Pausing for UI")
+	is_paused = true
+
+func _advance_state_machine() -> void:
+	"""
+	Main state machine loop.
+	Continues executing states until paused or game over.
+	
+	This loop is the heart of the state machine. It will keep transitioning
+	between states automatically until:
+	1. It reaches a pause point (waiting for UI)
+	2. It reaches AWAITING_INPUT (waiting for player/NPC action)
+	3. It reaches POST_HAND (hand ended, waiting for start_new_hand())
+	4. It reaches GAME_OVER (match ended)
+	"""
+	while not is_paused and current_state != EngineState.GAME_OVER and current_state != EngineState.AWAITING_INPUT and current_state != EngineState.POST_HAND:
+		match current_state:
+			EngineState.PRE_HAND:
+				_state_pre_hand()
+			EngineState.DEALING:
+				_state_dealing()
+			EngineState.BETTING:
+				_state_betting()
+			EngineState.AWAITING_INPUT:
+				# This state should not be reached in the loop anymore
+				# The loop condition now prevents this
+				print("PokerEngine Error: Should not reach AWAITING_INPUT in loop")
+				break
+			EngineState.EVALUATING:
+				_state_evaluating()
+			EngineState.POST_HAND:
+				_state_post_hand()
+			EngineState.GAME_OVER:
+				# Terminal state
+				break
+				break
+
+# ============================================================================
+# STATE IMPLEMENTATIONS
+# ============================================================================
+
+func _state_pre_hand() -> void:
+	"""
+	PRE_HAND state: Post blinds, check for match end, prepare dealing.
+	"""
+	print("PokerEngine: State PRE_HAND")
+	
+	# Post blinds first
 	_post_blinds()
 	
 	# Emit hand started signal
 	hand_started.emit(player_stack, npc_stack)
 	
-	# Start first betting round
-	_start_betting_round()
+	# Check for game over AFTER blinds (in case someone went all-in on blinds and lost)
+	if player_stack <= 0:
+		print("PokerEngine: Player eliminated - Game Over")
+		current_state = EngineState.GAME_OVER
+		hand_ended.emit(false, pot)  # NPC won - award pot
+		npc_stack += pot
+		pot = 0
+		return
+	
+	if npc_stack <= 0:
+		print("PokerEngine: NPC eliminated - Game Over")
+		current_state = EngineState.GAME_OVER
+		hand_ended.emit(true, pot)  # Player won - award pot
+		player_stack += pot
+		pot = 0
+		return
+	
+	# Transition to dealing
+	current_state = EngineState.DEALING
+
+func _state_dealing() -> void:
+	"""
+	DEALING state: Deal appropriate cards based on hand phase.
+	"""
+	print("PokerEngine: State DEALING - Phase: ", HandPhase.keys()[hand_phase])
+	
+	match hand_phase:
+		HandPhase.PRE_FLOP:
+			# Deal hole cards
+			player_hand = deck.deal(2)
+			npc_hand = deck.deal(2)
+			print("PokerEngine: Dealt hole cards")
+			player_cards_dealt.emit(player_hand)
+			# Pause for UI to display cards
+			_pause_for_ui()
+		
+		HandPhase.FLOP:
+			# Deal flop
+			deck.deal_one()  # Burn card
+			var flop = deck.deal(3)
+			community_cards.append_array(flop)
+			print("PokerEngine: Dealt flop")
+			community_cards_dealt.emit("flop", community_cards)
+			_pause_for_ui()
+		
+		HandPhase.TURN:
+			# Deal turn
+			deck.deal_one()  # Burn card
+			var turn = deck.deal_one()
+			community_cards.append(turn)
+			print("PokerEngine: Dealt turn")
+			community_cards_dealt.emit("turn", community_cards)
+			_pause_for_ui()
+		
+		HandPhase.RIVER:
+			# Deal river
+			deck.deal_one()  # Burn card
+			var river = deck.deal_one()
+			community_cards.append(river)
+			print("PokerEngine: Dealt river")
+			community_cards_dealt.emit("river", community_cards)
+			_pause_for_ui()
+		
+		HandPhase.SHOWDOWN:
+			# Should not deal in showdown
+			print("PokerEngine Error: DEALING state in SHOWDOWN phase")
+			current_state = EngineState.EVALUATING
+			return
+	
+	# After dealing, move to betting (will execute after resume)
+	current_state = EngineState.BETTING
+
+func _state_betting() -> void:
+	"""
+	BETTING state: Check if betting round is complete, otherwise trigger next action.
+	
+	This state determines:
+	1. Is the betting round complete? (both acted, bets match, or all-in)
+	2. If not, whose turn is it?
+	3. Emit appropriate signal and pause for input
+	
+	Special handling for all-in scenarios where remaining cards auto-deal.
+	"""
+	print("PokerEngine: State BETTING")
+	
+	# Check if both players are all-in
+	if player_stack == 0 and npc_stack == 0:
+		print("PokerEngine: Both all-in, auto-dealing to showdown")
+		_auto_deal_to_showdown()
+		return
+	
+	# Check if one player is all-in and action is complete
+	if (player_stack == 0 or npc_stack == 0) and _both_players_acted():
+		print("PokerEngine: All-in with action complete, advancing")
+		_complete_betting_round()
+		return
+	
+	# Check if betting round is complete (both acted and bets match)
+	if _both_players_acted() and player_bet_this_round == npc_bet_this_round:
+		print("PokerEngine: Betting round complete")
+		_complete_betting_round()
+		return
+	
+	# Determine whose turn it is
+	var player_should_act = _player_should_act()
+	
+	if player_should_act:
+		# Player's turn
+		var valid_actions = get_valid_actions()
+		print("PokerEngine: Player's turn - ", valid_actions)
+		player_turn.emit(valid_actions)
+		current_state = EngineState.AWAITING_INPUT
+		# Don't pause - we're waiting for submit_action() to be called
+		return
+	else:
+		# NPC's turn
+		var context = get_decision_context()
+		print("PokerEngine: NPC's turn")
+		npc_turn.emit(context)
+		current_state = EngineState.AWAITING_INPUT
+		# Don't pause - we're waiting for submit_action() to be called
+		return
+
+func _state_evaluating() -> void:
+	"""
+	EVALUATING state: Determine winner (showdown or fold).
+	"""
+	print("PokerEngine: State EVALUATING")
+	
+	# This should only be reached via showdown
+	# (folds are handled immediately in submit_action)
+	_showdown()
+	
+	# Move to post-hand
+	current_state = EngineState.POST_HAND
+
+func _state_post_hand() -> void:
+	"""
+	POST_HAND state: Clean up, prepare for next hand.
+	This is a terminal state - GameView will call start_new_hand() when ready.
+	"""
+	print("PokerEngine: State POST_HAND - waiting for start_new_hand()")
+	
+	# Alternate dealer
+	var old_dealer = "Player" if dealer_is_player else "NPC"
+	dealer_is_player = not dealer_is_player
+	var new_dealer = "Player" if dealer_is_player else "NPC"
+	print("PokerEngine: Dealer alternated from ", old_dealer, " to ", new_dealer)
+	
+	# Don't auto-transition - wait for start_new_hand() to be called
+	# This allows GameView to control timing (show messages, delays, etc.)
+
+func _player_should_act() -> bool:
+	"""
+	Determine if player should act next.
+	Pre-flop: small blind (dealer) acts first.
+	Post-flop: non-dealer acts first.
+	"""
+	if hand_phase == HandPhase.PRE_FLOP:
+		# Small blind (dealer) acts first
+		if dealer_is_player:
+			return not player_has_acted or (npc_has_acted and player_bet_this_round != npc_bet_this_round)
+		else:
+			return npc_has_acted and player_bet_this_round != npc_bet_this_round
+	else:
+		# Post-flop: non-dealer acts first
+		if dealer_is_player:
+			# NPC is first to act post-flop
+			return npc_has_acted and player_bet_this_round != npc_bet_this_round
+		else:
+			# Player is first to act post-flop
+			return not player_has_acted or (npc_has_acted and player_bet_this_round != npc_bet_this_round)
+
+func _auto_deal_to_showdown() -> void:
+	"""
+	Auto-deal remaining community cards when both players are all-in.
+	"""
+	print("PokerEngine: Auto-dealing to showdown")
+	
+	while hand_phase < HandPhase.RIVER:
+		match hand_phase:
+			HandPhase.PRE_FLOP:
+				# Deal flop
+				deck.deal_one()
+				var flop = deck.deal(3)
+				community_cards.append_array(flop)
+				community_cards_dealt.emit("flop", community_cards)
+				hand_phase = HandPhase.FLOP
+			
+			HandPhase.FLOP:
+				# Deal turn
+				deck.deal_one()
+				var turn = deck.deal_one()
+				community_cards.append(turn)
+				community_cards_dealt.emit("turn", community_cards)
+				hand_phase = HandPhase.TURN
+			
+			HandPhase.TURN:
+				# Deal river
+				deck.deal_one()
+				var river = deck.deal_one()
+				community_cards.append(river)
+				community_cards_dealt.emit("river", community_cards)
+				hand_phase = HandPhase.RIVER
+	
+	# Go to showdown
+	current_state = EngineState.EVALUATING
+
+func _complete_betting_round() -> void:
+	"""
+	Complete the current betting round and advance to next phase.
+	"""
+	print("PokerEngine: Completing betting round")
+	
+	# Reset per-round tracking
+	player_bet_this_round = 0
+	npc_bet_this_round = 0
+	current_bet = 0
+	player_has_acted = false
+	npc_has_acted = false
+	
+	# Advance phase
+	match hand_phase:
+		HandPhase.PRE_FLOP:
+			hand_phase = HandPhase.FLOP
+			current_state = EngineState.DEALING
+		
+		HandPhase.FLOP:
+			hand_phase = HandPhase.TURN
+			current_state = EngineState.DEALING
+		
+		HandPhase.TURN:
+			hand_phase = HandPhase.RIVER
+			current_state = EngineState.DEALING
+		
+		HandPhase.RIVER:
+			# Go to showdown
+			hand_phase = HandPhase.SHOWDOWN
+			current_state = EngineState.EVALUATING
 
 # ============================================================================
 # BLIND POSTING
@@ -164,109 +500,7 @@ func _post_blinds() -> void:
 	
 	pot_updated.emit(pot)
 
-# ============================================================================
-# BETTING ROUND MANAGEMENT
-# ============================================================================
 
-func _start_betting_round() -> void:
-	"""
-	Start a betting round.
-	In pre-flop heads-up, small blind (dealer) acts first.
-	In all other rounds, non-dealer acts first.
-	"""
-	print("PokerEngine: Starting betting round - ", HandPhase.keys()[hand_phase])
-	
-	# Determine who acts first
-	if hand_phase == HandPhase.PRE_FLOP:
-		# Pre-flop: Small blind (dealer) acts first
-		if dealer_is_player:
-			_trigger_player_turn()
-		else:
-			_trigger_npc_turn()
-	else:
-		# Post-flop: Non-dealer acts first
-		if dealer_is_player:
-			_trigger_npc_turn()
-		else:
-			_trigger_player_turn()
-
-func _trigger_player_turn() -> void:
-	"""Emit signal to notify that it's the player's turn."""
-	var valid_actions = get_valid_actions()
-	print("PokerEngine: Player's turn - ", valid_actions)
-	player_turn.emit(valid_actions)
-
-func _trigger_npc_turn() -> void:
-	"""Emit signal to notify that it's the NPC's turn."""
-	var context = get_decision_context()
-	print("PokerEngine: NPC's turn")
-	npc_turn.emit(context)
-
-func _complete_betting_round() -> void:
-	"""
-	Complete the current betting round and advance to next phase.
-	Called when both players have acted and bets are matched.
-	"""
-	print("PokerEngine: Betting round complete")
-	
-	# Reset per-round bet tracking
-	player_bet_this_round = 0
-	npc_bet_this_round = 0
-	current_bet = 0
-	player_has_acted = false
-	npc_has_acted = false
-	
-	# Advance to next phase
-	match hand_phase:
-		HandPhase.PRE_FLOP:
-			_deal_flop()
-			hand_phase = HandPhase.FLOP
-			_start_betting_round()
-		
-		HandPhase.FLOP:
-			_deal_turn()
-			hand_phase = HandPhase.TURN
-			_start_betting_round()
-		
-		HandPhase.TURN:
-			_deal_river()
-			hand_phase = HandPhase.RIVER
-			_start_betting_round()
-		
-		HandPhase.RIVER:
-			# Go to showdown
-			_showdown()
-
-# ============================================================================
-# COMMUNITY CARD DEALING
-# ============================================================================
-
-func _deal_flop() -> void:
-	"""Deal the flop (3 community cards)."""
-	deck.deal_one()  # Burn card
-	var flop = deck.deal(3)
-	community_cards.append_array(flop)
-	
-	print("PokerEngine: Dealt flop")
-	community_cards_dealt.emit("flop", community_cards)
-
-func _deal_turn() -> void:
-	"""Deal the turn (4th community card)."""
-	deck.deal_one()  # Burn card
-	var turn = deck.deal_one()
-	community_cards.append(turn)
-	
-	print("PokerEngine: Dealt turn")
-	community_cards_dealt.emit("turn", community_cards)
-
-func _deal_river() -> void:
-	"""Deal the river (5th community card)."""
-	deck.deal_one()  # Burn card
-	var river = deck.deal_one()
-	community_cards.append(river)
-	
-	print("PokerEngine: Dealt river")
-	community_cards_dealt.emit("river", community_cards)
 
 # ============================================================================
 # PLAYER ACTIONS
@@ -275,7 +509,14 @@ func _deal_river() -> void:
 func submit_action(is_player: bool, action: String, amount: int = 0) -> void:
 	"""
 	Primary input method for submitting player or NPC actions.
-	Processes the action, updates state, and determines next step.
+	Processes the action, updates state, and resumes state machine.
+	
+	This is called by GameView when:
+	- Player clicks a betting button
+	- NPC_AI makes a decision
+	
+	The function validates the state, processes the action, and resumes
+	the state machine to continue game flow.
 	
 	Args:
 		is_player: true if player action, false if NPC
@@ -284,9 +525,18 @@ func submit_action(is_player: bool, action: String, amount: int = 0) -> void:
 	"""
 	print("PokerEngine: Action submitted - ", "Player" if is_player else "NPC", ": ", action, " (", amount, ")")
 	
+	# Validate state
+	if current_state != EngineState.AWAITING_INPUT:
+		print("PokerEngine Error: submit_action called in wrong state: ", EngineState.keys()[current_state])
+		return
+	
+	# Process action
 	match action:
 		"fold":
 			_handle_fold(is_player)
+			# Fold ends the hand immediately - state is now POST_HAND
+			# POST_HAND is a terminal state, no need to call resume()
+			return
 		"check":
 			_handle_check(is_player)
 		"call":
@@ -295,21 +545,44 @@ func submit_action(is_player: bool, action: String, amount: int = 0) -> void:
 			_handle_raise(is_player, amount)
 		_:
 			print("PokerEngine Error: Unknown action - ", action)
+			return
+	
+	# Return to betting state and resume
+	current_state = EngineState.BETTING
+	_advance_state_machine()  # Continue state machine to process BETTING state
 
 func _handle_fold(is_player: bool) -> void:
-	"""Handle a fold action."""
+	"""Handle a fold action - immediately ends hand."""
 	if is_player:
 		print("PokerEngine: Player folds")
 		player_has_acted = true
 		# NPC wins pot
 		npc_stack += pot
-		_end_hand(false)
+		var pot_amount = pot
+		pot = 0
+		pot_updated.emit(pot)
+		
+		# Emit fold win signal and end hand
+		hand_ended.emit(false, pot_amount)
+		
+		# Go to post-hand and execute it
+		current_state = EngineState.POST_HAND
+		_state_post_hand()  # Directly call to alternate dealer
 	else:
 		print("PokerEngine: NPC folds")
 		npc_has_acted = true
 		# Player wins pot
 		player_stack += pot
-		_end_hand(true)
+		var pot_amount = pot
+		pot = 0
+		pot_updated.emit(pot)
+		
+		# Emit fold win signal and end hand
+		hand_ended.emit(true, pot_amount)
+		
+		# Go to post-hand and execute it
+		current_state = EngineState.POST_HAND
+		_state_post_hand()  # Directly call to alternate dealer
 
 func _handle_check(is_player: bool) -> void:
 	"""Handle a check action."""
@@ -320,20 +593,6 @@ func _handle_check(is_player: bool) -> void:
 		player_has_acted = true
 	else:
 		npc_has_acted = true
-	
-	# Check if both players have acted, or if someone is all-in
-	if _both_players_acted():
-		_complete_betting_round()
-	elif player_stack == 0 or npc_stack == 0:
-		# Someone is all-in and can't act further - complete round
-		print("PokerEngine: All-in detected, completing betting round")
-		_complete_betting_round()
-	else:
-		# Pass to other player
-		if is_player:
-			_trigger_npc_turn()
-		else:
-			_trigger_player_turn()
 
 func _handle_call(is_player: bool) -> void:
 	"""Handle a call action."""
@@ -367,21 +626,6 @@ func _handle_call(is_player: bool) -> void:
 			print("PokerEngine: NPC is all-in!")
 	
 	pot_updated.emit(pot)
-	
-	# Check if round should complete
-	# Round completes if: both acted AND (bets match OR someone is all-in)
-	if _both_players_acted():
-		_complete_betting_round()
-	elif player_stack == 0 or npc_stack == 0:
-		# Someone is all-in and can't act further - complete round
-		print("PokerEngine: All-in detected, completing betting round")
-		_complete_betting_round()
-	else:
-		# Pass to other player for their option
-		if is_player:
-			_trigger_npc_turn()
-		else:
-			_trigger_player_turn()
 
 func _handle_raise(is_player: bool, total_bet: int) -> void:
 	"""Handle a raise/bet action."""
@@ -403,13 +647,6 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		# Check if player is all-in
 		if player_stack == 0:
 			print("PokerEngine: Player is all-in!")
-			# If player is all-in, NPC doesn't need to respond unless they can overcall
-			# Since player is all-in, they can't act further
-			# NPC should still get a turn to call/fold
-		
-		# Pass to NPC
-		pot_updated.emit(pot)
-		_trigger_npc_turn()
 	else:
 		var additional = total_bet - npc_bet_this_round
 		additional = min(additional, npc_stack)
@@ -428,10 +665,8 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 		# Check if NPC is all-in
 		if npc_stack == 0:
 			print("PokerEngine: NPC is all-in!")
-		
-		# Pass to player
-		pot_updated.emit(pot)
-		_trigger_player_turn()
+	
+	pot_updated.emit(pot)
 
 # ============================================================================
 # SHOWDOWN
@@ -440,7 +675,7 @@ func _handle_raise(is_player: bool, total_bet: int) -> void:
 func _showdown() -> void:
 	"""
 	Evaluate hands and determine winner.
-	Emit showdown signal with results.
+	Emit showdown signal and pause for UI.
 	"""
 	print("PokerEngine: Showdown!")
 	hand_phase = HandPhase.SHOWDOWN
@@ -459,7 +694,8 @@ func _showdown() -> void:
 		"player_hand_description": player_result.description,
 		"npc_hand_description": npc_result.description,
 		"player_won": false,
-		"tied": false
+		"tied": false,
+		"pot_amount": pot
 	}
 	
 	if comparison > 0:
@@ -480,35 +716,22 @@ func _showdown() -> void:
 		npc_stack += (pot - half_pot)  # Give odd chip to NPC
 		result.tied = true
 	
-	result.pot_amount = pot
-	
-	# Emit showdown signal
-	showdown.emit(player_hand, npc_hand, result)
-	
-	# End hand
-	_end_hand(result.player_won)
-
-# ============================================================================
-# HAND END
-# ============================================================================
-
-func _end_hand(winner_is_player: bool) -> void:
-	"""
-	End the current hand.
-	Emit hand_ended signal with winner information.
-	"""
+	# Clear pot
 	var pot_amount = pot
 	pot = 0
 	pot_updated.emit(pot)
 	
-	print("PokerEngine: Hand ended - Winner: ", "Player" if winner_is_player else "NPC")
-	hand_ended.emit(winner_is_player, pot_amount)
+	# Emit showdown signal
+	showdown.emit(player_hand, npc_hand, result)
 	
-	# Alternate dealer
-	dealer_is_player = not dealer_is_player
+	# Emit hand ended
+	hand_ended.emit(result.player_won, pot_amount)
+	
+	# Pause for UI
+	_pause_for_ui()
 
 # ============================================================================
-# UTILITY FUNCTIONS
+# BLIND POSTING (Moved from earlier in file)
 # ============================================================================
 
 func get_valid_actions() -> Dictionary:
