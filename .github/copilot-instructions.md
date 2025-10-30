@@ -9,6 +9,7 @@ SpacePoker is a single-player desktop poker game (No-Limit Texas Hold'em) built 
 - **Godot Engine** (GDScript) - Game engine and UI
 - **Godot LLM addon** - Local LLM integration 
 - **Local LLM** - NPC personality generation and chat responses
+- **GdUnit4** - Unit testing framework for poker engine logic
 - **JSON files** - Unencrypted local persistence in `saves/` folder
 
 ### Core Systems Architecture
@@ -43,13 +44,16 @@ assets/                 # Cards, UI elements (Creative Commons)
 
 ### Key Development Commands
 - `godot --headless --quit --script-editor` - Launch Godot editor
+- `godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd` - Run GdUnit4 tests (for CI/CD)
 - Debug via Godot's built-in debugger and print statements
 - Test LLM integration early - this is the highest risk component
 
 ### Testing Strategy
-- **Manual testing priority** - No automated tests planned for MVP
+- **GdUnit4 for PokerEngine** - Unit tests for poker logic (hand evaluation, betting rounds, showdowns)
+- **Manual testing for UI/LLM** - User interactions and LLM responses verified manually
 - **Debug mode** - Hardcode NPC personality values in JSON files for testing specific behaviors
 - **LLM validation** - Create technical spike first to validate Godot ↔ local LLM communication
+- **CI/CD ready** - GdUnit4 tests can run in automated pipelines
 
 ## Project-Specific Conventions
 

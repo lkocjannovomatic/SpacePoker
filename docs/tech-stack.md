@@ -1,3 +1,4 @@
 - Godot Engine - https://github.com/godotengine/godot
 - Godot LLM addon - https://github.com/Adriankhl/godot-llm
 - local LLM - https://huggingface.co/
+- Unit test framework - https://github.com/MikeSchulze/gdUnit4

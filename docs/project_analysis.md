@@ -37,3 +37,11 @@ This schedule is tight and requires rapid learning and no major roadblocks.
 The project is an excellent choice for the stated goal of developing AI programming skills. It is innovative and well-scoped.
 
 **It is recommended to proceed with a risk-mitigation strategy: Tackle the biggest risk first.** Before building the full application, create a minimal "technical spike" project in Godot to validate the communication with the local LLM. This will quickly determine the feasibility of the core technical challenge and provide valuable insight into the effort required.
+
+### Testing Approach Update
+GdUnit4 has been added to the project for automated unit testing of the poker engine logic. While manual testing remains the priority for MVP UI and LLM integration, unit tests provide:
+- **Regression prevention** for complex poker logic (hand evaluation, betting rounds, all-in scenarios)
+- **CI/CD readiness** for automated testing in deployment pipelines
+- **Documentation** through test cases showing expected poker engine behavior
+
+Tests focus on `PokerEngine.gd` where deterministic logic can be reliably validated, while LLM and UI components remain manually tested due to their non-deterministic nature.
