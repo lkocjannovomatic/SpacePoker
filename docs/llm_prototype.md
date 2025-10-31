@@ -20,6 +20,8 @@
 <technical_spike_summary>
 The technical spike project is designed to validate the core functionality of integrating a local LLM with the Godot engine using the `godot-llm` addon.
 
+**LLM Model**: The project uses Phi-3-mini-4k-instruct-q4 (3.8B parameters, Q4_K_M quantization, 2.2GB) for all LLM operations with different optimization parameters for NPC generation vs. chat responses.
+
 **Main Requirements:**
 The primary goal is to create a minimal, non-blocking prototype that can send a text prompt to the local LLM and display its response. The prototype must include robust error handling to manage potential failures in the addon or the LLM itself. The resulting code should be modular and reusable for the final game.
 

@@ -6,9 +6,6 @@ extends Node
 signal generation_completed(slot_index: int, npc_data: Dictionary)
 signal generation_failed(error_message: String)
 
-# Constants
-const PROMPTS_DIR = "prompts/"
-
 # Generation state
 var _is_generating: bool = false
 var _current_slot_index: int = -1
@@ -160,28 +157,12 @@ func _get_npc_json_schema() -> String:
 	
 	return JSON.stringify(schema)
 
-func _load_prompt_file(filename: String) -> String:
-	var prompt_path = "res://" + PROMPTS_DIR + filename
-	
-	if not FileAccess.file_exists(prompt_path):
-		print("NPCGenerator Error: Prompt file not found at ", prompt_path)
-		return ""
-	
-	var file = FileAccess.open(prompt_path, FileAccess.READ)
-	if file == null:
-		print("NPCGenerator Error: Could not open prompt file: ", prompt_path)
-		return ""
-	
-	var prompt = file.get_as_text()
-	file.close()
-	
-	return prompt
-
 func _create_prompt_with_traits(traits: Dictionary) -> String:
 	"""
 	Load the prompt template and replace placeholders with actual trait values.
+	Uses centralized LLMClient utility for prompt file loading.
 	"""
-	var template = _load_prompt_file("npc_generation.txt")
+	var template = LLMClient.load_prompt_file("npc_generation.txt")
 	
 	if template == "":
 		print("NPCGenerator Error: Failed to load prompt template")
@@ -235,31 +216,14 @@ func _on_llm_response(response_text: String):
 	generation_completed.emit(slot_index, npc_data)
 
 func _parse_npc_json_response(response: String) -> Dictionary:
-	# Clean the response by extracting JSON between Phi-3 special tokens
-	var cleaned_response = _extract_json_from_response(response)
+	"""
+	Parse simplified JSON response from LLM (only name and backstory).
+	Personality traits were already generated randomly before LLM call.
+	Uses centralized LLMClient utility for JSON parsing.
+	"""
+	var data = LLMClient.parse_json_object(response, ["name", "backstory"])
 	
-	var json = JSON.new()
-	var parse_result = json.parse(cleaned_response)
-	
-	if parse_result != OK:
-		print("NPCGenerator Error: JSON parse error at line ", json.get_error_line(), ": ", json.get_error_message())
-		print("Raw response: ", response)
-		print("Cleaned response: ", cleaned_response)
-		return {}
-	
-	var data = json.data
-	
-	# Validate required fields
-	if not data is Dictionary:
-		print("NPCGenerator Error: LLM response is not a JSON object")
-		return {}
-	
-	if not data.has("name") or data["name"] == "":
-		print("NPCGenerator Error: Missing or empty 'name' field")
-		return {}
-	
-	if not data.has("backstory") or data["backstory"] == "":
-		print("NPCGenerator Error: Missing or empty 'backstory' field")
+	if data.is_empty():
 		return {}
 	
 	# Extract and validate only name and backstory
@@ -272,44 +236,6 @@ func _parse_npc_json_response(response: String) -> Dictionary:
 		result["backstory"] = result["backstory"].substr(0, 997) + "..."
 	
 	return result
-
-func _extract_json_from_response(response: String) -> String:
-	"""
-	Extract JSON content from LLM response by removing Phi-3 prompt echoes.
-	JSON result is between the last <|assistant|> and last <|end|> tags.
-	"""
-	var cleaned = response.strip_edges()
-	
-	# Normalize line endings
-	cleaned = cleaned.replace("\r\n", "\n")
-	cleaned = cleaned.replace("\r", "\n")
-	
-	# Find the last occurrence of <|assistant|> marker
-	var assistant_marker = "<|assistant|>"
-	var last_assistant_pos = cleaned.rfind(assistant_marker)
-	
-	if last_assistant_pos != -1:
-		# Extract everything after the last <|assistant|>
-		cleaned = cleaned.substr(last_assistant_pos + assistant_marker.length())
-	
-	# Find the last occurrence of <|end|> marker
-	var end_marker = "<|end|>"
-	var last_end_pos = cleaned.rfind(end_marker)
-	
-	if last_end_pos != -1:
-		# Extract everything before the last <|end|>
-		cleaned = cleaned.substr(0, last_end_pos)
-	
-	# Strip any remaining whitespace
-	cleaned = cleaned.strip_edges()
-	
-	# Log for debugging
-	if last_assistant_pos != -1 or last_end_pos != -1:
-		print("NPCGenerator: Cleaned LLM response (removed prompt echo)")
-		print("  Original length: ", response.length(), " chars")
-		print("  Cleaned length: ", cleaned.length(), " chars")
-	
-	return cleaned
 
 func _on_llm_error(error_message: String):
 	"""Handle LLM errors during generation."""

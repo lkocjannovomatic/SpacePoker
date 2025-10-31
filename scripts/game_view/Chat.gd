@@ -20,9 +20,6 @@ var current_npc: Dictionary = {}
 # Conversation tracking
 var current_conversation_messages: Array = []  # Array of {speaker: String, text: String}
 
-# Constants
-const PROMPTS_DIR = "prompts/"
-
 # Canned responses for abusive content
 const DISMISSAL_RESPONSES = [
 	"I'd rather not talk about that.",
@@ -236,17 +233,24 @@ func _create_chat_prompt(player_message: String) -> String:
 	"""
 	var npc_name = current_npc.get("name", "NPC")
 	var backstory = current_npc.get("backstory", "")
+	var conversation_history = current_npc.get("conversation_history", "")
 	
-	# Load prompt template
-	var template = _load_prompt_file("chat_response.txt")
+	# Load prompt template using centralized utility
+	var template = LLMClient.load_prompt_file("chat_response.txt")
 	
 	if template == "":
 		print("Chat Error: Could not load chat_response.txt")
 		return ""
 	
+	# Format conversation history for prompt
+	var history_text = ""
+	if not conversation_history.is_empty():
+		history_text = "Previous conversations with this player:\n" + conversation_history
+	
 	# Replace placeholders
 	var prompt = template.replace("{npc_name}", npc_name)
 	prompt = prompt.replace("{backstory}", backstory)
+	prompt = prompt.replace("{conversation_history}", history_text)
 	prompt = prompt.replace("{player_message}", player_message)
 	
 	return prompt
@@ -254,21 +258,19 @@ func _create_chat_prompt(player_message: String) -> String:
 func _clean_llm_response(response: String) -> String:
 	"""
 	Clean LLM response by removing model-specific artifacts.
-	Handles LLaMA format and removes prompt echo.
+	Handles Phi-3 format and removes prompt echo.
 	"""
 	var cleaned = response
 	
-	# Remove prompt echo FIRST - find the last occurrence of "### Response:" and take everything after
-	var response_marker_pos = cleaned.rfind("### Response:")
-	if response_marker_pos != -1:
-		cleaned = cleaned.substr(response_marker_pos + 14)  # Length of "### Response:" + 1
+	# Remove prompt echo FIRST - find the last occurrence of "<|assistant|>" and take everything after
+	var assistant_marker_pos = cleaned.rfind("<|assistant|>")
+	if assistant_marker_pos != -1:
+		cleaned = cleaned.substr(assistant_marker_pos + 13)  # Length of "<|assistant|>" = 13
 	
-	# Now remove LLaMA format markers
-	cleaned = cleaned.replace("<s>", "")
-	cleaned = cleaned.replace("</s>", "")
-	cleaned = cleaned.replace("### Instruction:", "")
-	cleaned = cleaned.replace("### Input:", "")
-	cleaned = cleaned.replace("### Response:", "")
+	# Now remove Phi-3 format markers
+	cleaned = cleaned.replace("<|user|>", "")
+	cleaned = cleaned.replace("<|end|>", "")
+	cleaned = cleaned.replace("<|assistant|>", "")
 	
 	# Remove common artifacts
 	cleaned = cleaned.strip_edges()
@@ -282,7 +284,7 @@ func _clean_llm_response(response: String) -> String:
 func _get_chat_response_json_schema() -> String:
 	"""
 	Returns the JSON schema for chat response generation.
-	Ensures structured output from LLaMA model.
+	Ensures structured output from Phi-3 model.
 	"""
 	var schema = {
 		"type": "object",
@@ -301,90 +303,14 @@ func _parse_chat_json_response(response: String) -> String:
 	"""
 	Parse JSON response from LLM for chat.
 	Returns the response text or empty string if parsing fails.
+	Uses centralized LLMClient utility for JSON parsing.
 	"""
-	# Clean the response by extracting JSON
-	var cleaned = _extract_json_from_response(response)
+	var result = LLMClient.parse_json_field(response, "response")
 	
-	print("Chat Debug: Extracted JSON - ", cleaned)
+	if result != "":
+		print("Chat Debug: Extracted response field - ", result)
 	
-	var json = JSON.new()
-	var parse_result = json.parse(cleaned)
-	
-	if parse_result != OK:
-		print("Chat Warning: JSON parse error at line ", json.get_error_line(), ": ", json.get_error_message())
-		print("Chat Warning: Attempted to parse: ", cleaned)
-		return ""
-	
-	var data = json.data
-	
-	# Validate response structure
-	if not data is Dictionary:
-		print("Chat Warning: LLM response is not a JSON object")
-		return ""
-	
-	if not data.has("response"):
-		print("Chat Warning: Missing 'response' field in JSON")
-		print("Chat Warning: Available keys: ", data.keys())
-		return ""
-	
-	var result = str(data["response"]).strip_edges()
-	print("Chat Debug: Extracted response field - ", result)
 	return result
-
-func _extract_json_from_response(response: String) -> String:
-	"""
-	Extract JSON content from LLM response by removing prompt echo.
-	Handles LLaMA format markers and finds the actual JSON output.
-	"""
-	var cleaned = response.strip_edges()
-	
-	# Normalize line endings
-	cleaned = cleaned.replace("\r\n", "\n")
-	cleaned = cleaned.replace("\r", "\n")
-	
-	# Find the LAST occurrence of "### Response:" and take everything after it
-	var last_response_marker = cleaned.rfind("### Response:")
-	if last_response_marker != -1:
-		cleaned = cleaned.substr(last_response_marker + 14)  # Length of "### Response:" + 1
-		cleaned = cleaned.strip_edges()
-	
-	# Remove any remaining LLaMA markers
-	cleaned = cleaned.replace("<s>", "")
-	cleaned = cleaned.replace("</s>", "")
-	cleaned = cleaned.strip_edges()
-	
-	# Now try to find JSON object boundaries in the cleaned response
-	var json_start = cleaned.find("{")
-	var json_end = cleaned.rfind("}")
-	
-	if json_start != -1 and json_end != -1 and json_end > json_start:
-		cleaned = cleaned.substr(json_start, json_end - json_start + 1)
-	
-	# Remove any remaining whitespace
-	cleaned = cleaned.strip_edges()
-	
-	return cleaned
-
-func _load_prompt_file(filename: String) -> String:
-	"""
-	Load a prompt template file from the prompts directory.
-	Returns empty string if file not found.
-	"""
-	var prompt_path = "res://" + PROMPTS_DIR + filename
-	
-	if not FileAccess.file_exists(prompt_path):
-		print("Chat Error: Prompt file not found at ", prompt_path)
-		return ""
-	
-	var file = FileAccess.open(prompt_path, FileAccess.READ)
-	if file == null:
-		print("Chat Error: Could not open prompt file: ", prompt_path)
-		return ""
-	
-	var prompt = file.get_as_text()
-	file.close()
-	
-	return prompt
 
 # ============================================================================
 # OPENING LINE
@@ -434,17 +360,24 @@ func _create_opening_line_prompt() -> String:
 	"""
 	var npc_name = current_npc.get("name", "NPC")
 	var backstory = current_npc.get("backstory", "")
+	var conversation_history = current_npc.get("conversation_history", "")
 	
-	# Load prompt template
-	var template = _load_prompt_file("chat_opening_line.txt")
+	# Load prompt template using centralized utility
+	var template = LLMClient.load_prompt_file("chat_opening_line.txt")
 	
 	if template == "":
 		print("Chat Error: Could not load chat_opening_line.txt")
 		return ""
 	
+	# Format conversation history for prompt
+	var history_text = ""
+	if not conversation_history.is_empty():
+		history_text = "Previous conversations with this player:\n" + conversation_history
+	
 	# Replace placeholders
 	var prompt = template.replace("{npc_name}", npc_name)
 	prompt = prompt.replace("{backstory}", backstory)
+	prompt = prompt.replace("{conversation_history}", history_text)
 	
 	return prompt
 

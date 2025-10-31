@@ -113,6 +113,8 @@ func _get_trait_description(trait_name: String, category: String) -> String:
 - Keep only `name` and `backstory` as required fields
 - Simplify schema to reflect new structure
 
+**Note**: Uses Phi-3-mini-4k-instruct-q4 model for generation (same model used for chat with different optimization parameters).
+
 ```gdscript
 func _get_npc_json_schema() -> String:
 	"""
