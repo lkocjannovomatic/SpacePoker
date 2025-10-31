@@ -117,76 +117,82 @@ func _initialize_match() -> void:
 
 func _load_chat_history() -> String:
 	"""
-	Load conversation history for this NPC from save file.
+	Load conversation history for this NPC from the slot data.
 	Returns formatted string for display in History tab.
 	"""
 	var npc_index = GameManager.current_npc_index
-	var history_path = "res://" + GameManager.SAVE_DIR + "chat_history_slot_" + str(npc_index) + ".json"
+	var npc_data = GameManager.get_npc_data(npc_index)
 	
-	if not FileAccess.file_exists(history_path):
+	if npc_data.is_empty():
+		print("GameView: No NPC data found for slot ", npc_index)
+		return ""
+	
+	var history = npc_data.get("conversation_history", "")
+	
+	if history.is_empty():
 		print("GameView: No chat history found for this NPC")
-		return ""
+		return "[i]No previous conversations with this NPC.[/i]"
 	
-	var file = FileAccess.open(history_path, FileAccess.READ)
-	if file == null:
-		print("GameView Error: Could not open chat history file")
-		return ""
-	
-	var json_string = file.get_as_text()
-	file.close()
-	
-	var json = JSON.new()
-	var parse_result = json.parse(json_string)
-	
-	if parse_result != OK:
-		print("GameView Error: Failed to parse chat history JSON")
-		return ""
-	
-	var data = json.data
-	
-	# Format history for display
-	return _format_chat_history(data)
+	print("GameView: Loaded conversation history from NPC slot")
+	return history
 
-func _format_chat_history(history_data: Variant) -> String:
+func _save_chat_history() -> void:
 	"""
-	Format chat history data into readable text.
-	Expected format: { "conversations": [ { "messages": [...] }, ... ] }
+	Save the current conversation to the NPC slot's conversation_history field.
+	Formats as a readable string and updates the NPC data.
 	"""
-	if not history_data is Dictionary:
-		return ""
+	if not chat:
+		print("GameView Warning: Chat not available for saving history")
+		return
 	
-	if not history_data.has("conversations"):
-		return ""
+	var messages = chat.get_conversation_messages()
 	
-	var conversations = history_data["conversations"]
-	if not conversations is Array or conversations.is_empty():
-		return ""
+	print("GameView: Chat messages to save: ", messages.size())
 	
-	var formatted = ""
+	# Don't save empty conversations
+	if messages.is_empty():
+		print("GameView: No messages to save in chat history")
+		return
 	
-	for conversation in conversations:
-		if not conversation is Dictionary:
+	var npc_index = GameManager.current_npc_index
+	
+	# Get current NPC data
+	var npc_data = GameManager.get_npc_data(npc_index)
+	if npc_data.is_empty():
+		print("GameView Error: Could not get NPC data for slot ", npc_index)
+		return
+	
+	# Get existing conversation history
+	var existing_history = npc_data.get("conversation_history", "")
+	
+	# Format the new conversation
+	var timestamp = Time.get_datetime_string_from_system()
+	var new_conversation = "\n--- Match on " + timestamp + " ---\n"
+	
+	for message in messages:
+		if not message is Dictionary:
 			continue
 		
-		var timestamp = conversation.get("match_timestamp", "Unknown date")
-		formatted += "[b]Match on " + timestamp + "[/b]\n"
-		
-		var messages = conversation.get("messages", [])
-		for message in messages:
-			if not message is Dictionary:
-				continue
-			
-			var speaker = message.get("speaker", "Unknown")
-			var text = message.get("text", "")
-			
-			if speaker == "Player":
-				formatted += "[color=cyan]Player: " + text + "[/color]\n"
-			else:
-				formatted += "[color=orange]" + speaker + ": " + text + "[/color]\n"
-		
-		formatted += "\n"
+		var speaker = message.get("speaker", "Unknown")
+		var text = message.get("text", "")
+		new_conversation += speaker + ": " + text + "\n"
 	
-	return formatted
+	# Append to existing history
+	var updated_history = existing_history + new_conversation
+	
+	# Limit history size to prevent file bloat (keep last ~10 conversations worth)
+	# Rough estimate: 1000 chars per conversation, keep last 10000 chars
+	if updated_history.length() > 10000:
+		# Keep only the last 10000 characters
+		updated_history = "...\n" + updated_history.substr(updated_history.length() - 10000)
+	
+	# Update NPC data
+	npc_data["conversation_history"] = updated_history
+	
+	# Save updated NPC data
+	GameManager.save_npc_slot(npc_index)
+	
+	print("GameView: Chat history saved to NPC slot ", npc_index)
 
 # ============================================================================
 # PLAYER ACTION HANDLING
@@ -237,6 +243,10 @@ func _on_pot_updated(new_pot: int) -> void:
 	"""Handle pot update from PokerEngine."""
 	if board:
 		board.update_pot_label(new_pot)
+		
+		# Also update stack labels since pot changes mean stack changes
+		if poker_engine:
+			board.update_stack_labels(poker_engine.get_player_stack(), poker_engine.get_npc_stack())
 
 func _on_player_turn(valid_actions: Dictionary) -> void:
 	"""Handle player turn from PokerEngine."""
@@ -455,7 +465,9 @@ func _on_match_end(player_won: bool) -> void:
 	# Record result in GameManager
 	GameManager.record_match_result(player_won)
 	
-	# TODO: Save current chat conversation to history file
+	# Save current chat conversation to history file
+	_save_chat_history()
+	
 	# TODO: Show match summary screen
 	
 	# Return to start screen after delay
