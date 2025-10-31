@@ -14,7 +14,7 @@ enum ModelConfig {
 	CHAT             # Phi-3-mini-4k-instruct-q4 optimized for fast in-game chat responses
 }
 
-var gdllama: GDLlama
+var gdllama  # GDLlama instance (untyped to allow graceful degradation when extension unavailable)
 var is_llm_processing: bool = false
 var current_model: ModelConfig = ModelConfig.NPC_GENERATION
 
@@ -44,6 +44,13 @@ func _ready():
 
 func _initialize_llm():
 	"""Initialize the GDLlama node with default settings (NPC_GENERATION model)."""
+	# Check if GDLlama class exists (extension might not be loaded in headless/export mode)
+	if not ClassDB.class_exists("GDLlama"):
+		var error_msg = "GDLlama extension not available. LLM features will be disabled."
+		print("LLMClient Warning: ", error_msg)
+		error_occurred.emit(error_msg)
+		return
+	
 	# Verify model file exists
 	var phi3_path = "res://llms/Phi-3-mini-4k-instruct-q4.gguf"
 	
