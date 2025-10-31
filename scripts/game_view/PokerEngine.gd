@@ -321,6 +321,18 @@ func _state_betting() -> void:
 		_complete_betting_round()
 		return
 	
+	# Check if player is all-in and has already acted - other player can't extract more chips
+	if player_stack == 0 and player_has_acted:
+		print("PokerEngine: Player all-in and acted, completing round")
+		_complete_betting_round()
+		return
+	
+	# Check if NPC is all-in and has already acted - other player can't extract more chips
+	if npc_stack == 0 and npc_has_acted:
+		print("PokerEngine: NPC all-in and acted, completing round")
+		_complete_betting_round()
+		return
+	
 	# Determine whose turn it is
 	var player_should_act = _player_should_act()
 	
