@@ -1,4 +1,4 @@
-- Godot Engine - https://github.com/godotengine/godot
+- Godot Engine - Godot_v4.5.1-stable_win64  - https://github.com/godotengine/godot
 - Godot LLM addon - https://github.com/Adriankhl/godot-llm
 - Local LLM (Phi-3-mini-4k-instruct-q4) - https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf
 - Unit test framework - https://github.com/MikeSchulze/gdUnit4
