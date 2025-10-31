@@ -17,6 +17,9 @@ var pending_npc_response: String = ""
 # NPC data
 var current_npc: Dictionary = {}
 
+# Conversation tracking
+var current_conversation_messages: Array = []  # Array of {speaker: String, text: String}
+
 # Constants
 const PROMPTS_DIR = "prompts/"
 
@@ -59,6 +62,9 @@ func init(npc_data: Dictionary) -> void:
 	# Reset state
 	is_awaiting_response = false
 	pending_npc_response = ""
+	
+	# Clear conversation tracking for new match
+	current_conversation_messages.clear()
 
 func set_history_text(history: String) -> void:
 	"""
@@ -121,6 +127,12 @@ func append_message(speaker: String, message: String, color: Color) -> void:
 	"""
 	var formatted_message = "[color=#%s]%s: %s[/color]\n" % [color.to_html(false), speaker, message]
 	chat_display.append_text(formatted_message)
+	
+	# Track message in conversation history
+	current_conversation_messages.append({
+		"speaker": speaker,
+		"text": message
+	})
 	
 	# Auto-scroll to bottom
 	chat_display.scroll_to_line(chat_display.get_line_count())
@@ -567,12 +579,17 @@ func clear_chat() -> void:
 	"""Clear the current chat display."""
 	chat_display.clear()
 
+func get_conversation_messages() -> Array:
+	"""Get the current conversation messages for saving to history."""
+	return current_conversation_messages.duplicate()
+
 func reset() -> void:
 	"""Reset chat state (for cleanup when leaving match)."""
 	print("Chat: Resetting state")
 	is_awaiting_response = false
 	pending_npc_response = ""
 	current_npc = {}
+	current_conversation_messages.clear()
 	chat_display.clear()
 	history_display.clear()
 	message_input.clear()
