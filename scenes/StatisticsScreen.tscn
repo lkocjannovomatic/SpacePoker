@@ -1,16 +1,20 @@
 [gd_scene load_steps=6 format=3 uid="uid://c5qp7nhgx8w4b"]
 
-[ext_resource type="Script" path="res://scripts/start_screen/StatisticsScreen.gd" id="1_statistics"]
+[ext_resource type="Script" uid="uid://bbh6nojnf72sg" path="res://scripts/start_screen/StatisticsScreen.gd" id="1_statistics"]
 [ext_resource type="Texture2D" uid="uid://prxfgybbasbw" path="res://assets/backgrounds/bg_space_casino.png" id="2_background"]
 [ext_resource type="FontFile" uid="uid://cstyi01rp6ehx" path="res://assets/fonts/Orbitron-Regular.ttf" id="3_orbitron"]
 [ext_resource type="Texture2D" uid="uid://2bvtflvu7fid" path="res://assets/ui/panels/panel_terminal.png" id="4_panel_terminal"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_terminal"]
+content_margin_left = 250.0
+content_margin_top = 74.0
+content_margin_right = 250.0
+content_margin_bottom = 300.0
 texture = ExtResource("4_panel_terminal")
-texture_margin_left = 20.0
-texture_margin_top = 20.0
-texture_margin_right = 20.0
-texture_margin_bottom = 20.0
+expand_margin_left = 200.0
+expand_margin_top = 200.0
+expand_margin_right = 200.0
+expand_margin_bottom = 160.0
 
 [node name="StatisticsScreen" type="Control"]
 layout_mode = 3
@@ -39,10 +43,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 100
-theme_override_constants/margin_top = 50
-theme_override_constants/margin_right = 100
-theme_override_constants/margin_bottom = 50
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="PanelContainer" type="PanelContainer" parent="MarginContainer"]
 layout_mode = 2
