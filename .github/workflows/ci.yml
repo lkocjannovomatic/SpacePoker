@@ -27,50 +27,31 @@ jobs:
           timeout: 5
           retries: 3
 
-  build-windows:
-    name: Build Windows
-    runs-on: ubuntu-latest
+  export-windows:
+    name: Windows Export
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
     needs: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           lfs: true
-
-      - name: Setup Godot
+      - name: Setup
         run: |
-          wget https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip
-          unzip Godot_v4.5.1-stable_linux.x86_64.zip
-          chmod +x Godot_v4.5.1-stable_linux.x86_64
-          mkdir -p ~/.local/share/godot/export_templates/4.5.1.stable
-          
-      - name: Download Export Templates
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mkdir -v -p ~/.config/
+          mv /root/.config/godot ~/.config/godot
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Windows Build
         run: |
-          wget https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz
-          unzip Godot_v4.5.1-stable_export_templates.tpz
-          mv templates/* ~/.local/share/godot/export_templates/4.5.1.stable/
-
-      - name: Remove GDExtension Binaries
-        run: |
-          # Remove the godot_llm extension binaries to prevent crashes during headless operations
-          # The extension causes segfaults when the LLM model file is missing
-          rm -rf addons/godot_llm/bin/ || true
-          # Also remove the .gdextension file to prevent Godot from trying to load it
-          rm -f addons/godot_llm/godot_llm.gdextension || true
-          echo "Removed godot_llm extension to prevent crashes in headless mode"
-
-      - name: Import Project
-        run: |
-          ./Godot_v4.5.1-stable_linux.x86_64 --headless --editor --quit --path .
-
-      - name: Build Windows Export
-        run: |
-          mkdir -p build/windows
-          ./Godot_v4.5.1-stable_linux.x86_64 --headless --export-release "Windows Desktop" build/windows/SpacePoker.exe
-
-      - name: Upload Windows Build
+          mkdir -v -p build/windows
+          EXPORT_DIR="$(readlink -f build)"
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Windows Desktop" "$EXPORT_DIR/windows/$EXPORT_NAME.exe"
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpacePoker-Windows
-          path: build/windows/
-          retention-days: 30
+          name: windows
+          path: build/windows

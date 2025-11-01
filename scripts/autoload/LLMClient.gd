@@ -14,7 +14,7 @@ enum ModelConfig {
 	CHAT             # Phi-3-mini-4k-instruct-q4 optimized for fast in-game chat responses
 }
 
-var gdllama  # GDLlama instance (untyped to allow graceful degradation when extension unavailable)
+var gdllama: GDLlama
 var is_llm_processing: bool = false
 var current_model: ModelConfig = ModelConfig.NPC_GENERATION
 
