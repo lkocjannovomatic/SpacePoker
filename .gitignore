@@ -12,3 +12,4 @@ saves/*.*
 .vscode/
 llms/*.gguf
 reports/
+windows/

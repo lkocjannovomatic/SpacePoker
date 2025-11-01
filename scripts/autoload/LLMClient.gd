@@ -55,10 +55,12 @@ func _initialize_llm():
 	var phi3_path = "res://llms/Phi-3-mini-4k-instruct-q4.gguf"
 	
 	if not FileAccess.file_exists(phi3_path):
-		var error_msg = "LLM model file not found at %s. Please ensure the Phi-3 model is properly installed." % phi3_path
-		print("LLMClient Error: ", error_msg)
-		error_occurred.emit(error_msg)
-		return
+		phi3_path = OS.get_executable_path().get_base_dir() + "/llms/Phi-3-mini-4k-instruct-q4.gguf"
+		if not FileAccess.file_exists(phi3_path):
+			var error_msg = "LLM model file not found at %s. Please ensure the Phi-3 model is properly installed." % phi3_path
+			print("LLMClient Error: ", error_msg)
+			error_occurred.emit(error_msg)
+			return
 	
 	gdllama = GDLlama.new()
 	

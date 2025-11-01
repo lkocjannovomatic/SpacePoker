@@ -11,6 +11,11 @@ permissions:
   checks: write
   pull-requests: write
 
+env:
+  GODOT_VERSION: 4.5.1
+  EXPORT_NAME: "SpacePoker"
+  PROJECT_PATH: "."
+
 jobs:
   test:
     name: Run GdUnit4 Tests
@@ -31,25 +36,44 @@ jobs:
     name: Windows Export
     runs-on: ubuntu-24.04
     container:
-      image: barichello/godot-ci:4.3
+      image: barichello/godot-ci:4.5.1
     needs: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           lfs: true
+      
+      - name: Debug - List project files
+        run: |
+          echo "Project structure:"
+          ls -la
+          echo "Addons structure:"
+          ls -la addons/ || echo "No addons folder"
+          echo "GDExtension files:"
+          find . -name "*.gdextension" || echo "No .gdextension files"
+          
       - name: Setup
         run: |
           mkdir -v -p ~/.local/share/godot/export_templates/
           mkdir -v -p ~/.config/
           mv /root/.config/godot ~/.config/godot
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      
+      - name: Import project (validate resources)
+        run: |
+          godot --headless --verbose --editor --quit || true
+          
       - name: Windows Build
         run: |
           mkdir -v -p build/windows
-          EXPORT_DIR="$(readlink -f build)"
-          cd $PROJECT_PATH
-          godot --headless --verbose --export-release "Windows Desktop" "$EXPORT_DIR/windows/$EXPORT_NAME.exe"
+          godot --headless --verbose --export-debug "Windows Desktop" "build/windows/$EXPORT_NAME.exe"
+          
+      - name: Verify Build
+        run: |
+          echo "Build contents:"
+          ls -lh build/windows/
+          
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
