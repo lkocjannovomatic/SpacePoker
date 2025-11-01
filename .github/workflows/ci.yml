@@ -46,12 +46,23 @@ jobs:
       
       - name: Debug - List project files
         run: |
-          echo "Project structure:"
+          echo "=== Project structure ==="
           ls -la
-          echo "Addons structure:"
-          ls -la addons/ || echo "No addons folder"
-          echo "GDExtension files:"
-          find . -name "*.gdextension" || echo "No .gdextension files"
+          echo ""
+          echo "=== Export presets content ==="
+          cat export_presets.cfg
+          echo ""
+          echo "=== Project.godot features ==="
+          grep -A 5 "config/features" project.godot || echo "No features found"
+          echo ""
+          echo "=== Addons structure ==="
+          ls -laR addons/ || echo "No addons folder"
+          echo ""
+          echo "=== GDExtension files content ==="
+          find . -name "*.gdextension" -exec echo "File: {}" \; -exec cat {} \; || echo "No .gdextension files"
+          echo ""
+          echo "=== GDExtension binaries ==="
+          find . -name "*.so" -o -name "*.dll" -o -name "*.dylib" | head -20
           
       - name: Setup
         run: |
@@ -62,12 +73,60 @@ jobs:
       
       - name: Import project (validate resources)
         run: |
-          godot --headless --verbose --editor --quit || true
+          echo "=== Importing project ==="
+          godot --headless --verbose --editor --quit 2>&1 | tee import.log || true
+          echo ""
+          echo "=== Import log tail ==="
+          tail -50 import.log
+          echo ""
+          echo "=== Checking .godot folder ==="
+          ls -la .godot/ || echo "No .godot folder created"
+          
+      - name: List available export presets
+        run: |
+          echo "=== Available export presets ==="
+          godot --headless --export-release 2>&1 | grep -i "preset\|platform\|export" || echo "Could not list presets"
+          
+      - name: Test - Disable GDExtension temporarily
+        run: |
+          echo "=== Temporarily disabling godot_llm extension ==="
+          if [ -f "addons/godot_llm/godot_llm.gdextension" ]; then
+            mv addons/godot_llm/godot_llm.gdextension addons/godot_llm/godot_llm.gdextension.disabled
+            echo "GDExtension disabled for testing"
+          fi
+          echo ""
+          echo "=== Testing export without GDExtension ==="
+          mkdir -v -p build/test
+          godot --headless --export-debug "Windows Desktop" "build/test/test.exe" 2>&1 | tail -50 || {
+            echo "Export failed even without GDExtension - different issue"
+            # Re-enable it
+            if [ -f "addons/godot_llm/godot_llm.gdextension.disabled" ]; then
+              mv addons/godot_llm/godot_llm.gdextension.disabled addons/godot_llm/godot_llm.gdextension
+            fi
+            exit 1
+          }
+          echo ""
+          echo "=== Export succeeded without GDExtension! Re-enabling it ==="
+          if [ -f "addons/godot_llm/godot_llm.gdextension.disabled" ]; then
+            mv addons/godot_llm/godot_llm.gdextension.disabled addons/godot_llm/godot_llm.gdextension
+          fi
           
       - name: Windows Build
         run: |
+          echo "=== Creating output directory ==="
           mkdir -v -p build/windows
-          godot --headless --verbose --export-debug "Windows Desktop" "build/windows/$EXPORT_NAME.exe"
+          echo ""
+          echo "=== Starting export (this is where it crashes) ==="
+          echo "Command: godot --headless --verbose --export-debug \"Windows Desktop\" \"build/windows/$EXPORT_NAME.exe\""
+          godot --headless --verbose --export-debug "Windows Desktop" "build/windows/$EXPORT_NAME.exe" 2>&1 | tee export.log || {
+            echo ""
+            echo "=== EXPORT FAILED - Last 100 lines of output ==="
+            tail -100 export.log
+            echo ""
+            echo "=== Checking for core dump ==="
+            ls -lh core* 2>/dev/null || echo "No core dump found"
+            exit 1
+          }
           
       - name: Verify Build
         run: |
