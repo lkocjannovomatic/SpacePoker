@@ -117,8 +117,8 @@ jobs:
           mkdir -v -p build/windows
           echo ""
           echo "=== Starting export (this is where it crashes) ==="
-          echo "Command: godot --headless --verbose --export-debug \"Windows Desktop\" \"build/windows/$EXPORT_NAME.exe\""
-          godot --headless --verbose --export-debug "Windows Desktop" "build/windows/$EXPORT_NAME.exe" 2>&1 | tee export.log || {
+          echo "Command: godot --headless --verbose --export-release \"Windows Desktop\" \"build/windows/$EXPORT_NAME.exe\""
+          godot --headless --verbose --export-release "Windows Desktop" "build/windows/$EXPORT_NAME.exe" 2>&1 | tee export.log || {
             echo ""
             echo "=== EXPORT FAILED - Last 100 lines of output ==="
             tail -100 export.log
